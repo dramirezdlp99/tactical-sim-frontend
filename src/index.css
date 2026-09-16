@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-on-surface font-sans antialiased min-h-screen;
+    overscroll-behavior: none;
+  }
+}
+
+/* Ocultar barras de desplazamiento para estética limpia */
+::-webkit-scrollbar {
+  display: none;
+}
