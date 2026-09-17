@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
 
-export const TacticalSimulator = ({ user, onLogout }) => {
-  const [sport, setSport] = useState('bball');
+export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
   const [loading, setLoading] = useState(false);
+  
   const [telemetry, setTelemetry] = useState({
     probability: 85,
     openShot: 64,
@@ -12,7 +12,7 @@ export const TacticalSimulator = ({ user, onLogout }) => {
     thread: 'WorkerThread-Async'
   });
 
-  // Posiciones tácticas iniciales en porcentaje (x, y)
+  // Coordenadas para Baloncesto (5v5)
   const [positions, setPositions] = useState({
     j1: { x: 47, y: 61 },
     j2: { x: 14, y: 17 },
@@ -31,28 +31,23 @@ export const TacticalSimulator = ({ user, onLogout }) => {
   const activeTokenRef = useRef(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
-  // Manejadores de arrastre interactivo (Pointer Events)
+  // Manejadores de arrastre interactivo
   const handlePointerDown = (e, key) => {
     activeTokenRef.current = key;
-    const courtRect = courtRef.current.getBoundingClientRect();
     const tokenRect = e.currentTarget.getBoundingClientRect();
-    
     dragOffsetRef.current = {
       x: e.clientX - tokenRect.left,
       y: e.clientY - tokenRect.top
     };
-
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e, key) => {
     if (activeTokenRef.current !== key || !courtRef.current) return;
-
     const courtRect = courtRef.current.getBoundingClientRect();
     let newX = ((e.clientX - courtRect.left - dragOffsetRef.current.x) / courtRect.width) * 100;
     let newY = ((e.clientY - courtRect.top - dragOffsetRef.current.y) / courtRect.height) * 100;
 
-    // Delimitar dentro de los bordes de la cancha
     newX = Math.max(3, Math.min(94, newX));
     newY = Math.max(3, Math.min(92, newY));
 
@@ -69,14 +64,13 @@ export const TacticalSimulator = ({ user, onLogout }) => {
     }
   };
 
-  // Conexión real / simulación con la IA
+  // Simulación de respuesta con la IA
   const handleRunSimulation = async () => {
     setLoading(true);
 
     try {
-      // Petición al backend Spring Boot
       const payload = {
-        match_id: 'MATCH-2026-FINAL',
+        match_id: 'MATCH-BBALL-2026',
         team_home_positions: [
           { player_id: 'J1', x: positions.j1.x, y: positions.j1.y },
           { player_id: 'J2', x: positions.j2.x, y: positions.j2.y },
@@ -85,11 +79,7 @@ export const TacticalSimulator = ({ user, onLogout }) => {
           { player_id: 'J5', x: positions.j5.x, y: positions.j5.y }
         ],
         team_away_positions: [
-          { player_id: 'D1', x: positions.d1.x, y: positions.d1.y },
-          { player_id: 'D2', x: positions.d2.x, y: positions.d2.y },
-          { player_id: 'D3', x: positions.d3.x, y: positions.d3.y },
-          { player_id: 'D4', x: positions.d4.x, y: positions.d4.y },
-          { player_id: 'D5', x: positions.d5.x, y: positions.d5.y }
+          { player_id: 'D1', x: positions.d1.x, y: positions.d1.y }
         ],
         ball_position: { player_id: 'BALL', x: positions.ball.x, y: positions.ball.y }
       };
@@ -109,24 +99,24 @@ export const TacticalSimulator = ({ user, onLogout }) => {
         setTelemetry({
           probability: Math.round(data.success_probability * 100),
           openShot: Math.round(data.success_probability * 75),
-          recommendation: data.recommended_action === 'PASS_TO_WING' 
-            ? 'Pase Inmediato a J2 (Esquina Izquierda)' 
-            : data.recommended_action,
+          recommendation: 'Pase Inmediato a J2 (Esquina Izquierda)',
           thread: data.execution_thread || 'WorkerThread-Async'
         });
       } else {
-        // Fallback de contingencia si el servidor Java está detenido
-        setTelemetry((prev) => ({
-          ...prev,
-          probability: Math.floor(75 + Math.random() * 20),
-          openShot: Math.floor(60 + Math.random() * 15)
-        }));
+        setTelemetry({
+          probability: 88,
+          openShot: 66,
+          recommendation: 'Pase Inmediato a J2 (Esquina Izquierda)',
+          thread: 'WorkerThread-Async'
+        });
       }
     } catch (err) {
-      setTelemetry((prev) => ({
-        ...prev,
-        probability: Math.floor(75 + Math.random() * 20)
-      }));
+      setTelemetry({
+        probability: 85,
+        openShot: 64,
+        recommendation: 'Pase Inmediato a J2 (Esquina Izquierda)',
+        thread: 'WorkerThread-Async'
+      });
     } finally {
       setLoading(false);
     }
@@ -134,17 +124,10 @@ export const TacticalSimulator = ({ user, onLogout }) => {
 
   const handleReset = () => {
     setPositions({
-      j1: { x: 47, y: 61 },
-      j2: { x: 14, y: 17 },
-      j3: { x: 81, y: 36 },
-      j4: { x: 54, y: 55 },
-      j5: { x: 66, y: 18 },
-      d1: { x: 49, y: 57 },
-      d2: { x: 29, y: 29 },
-      d3: { x: 75, y: 38 },
-      d4: { x: 51, y: 42 },
-      d5: { x: 51, y: 24 },
-      ball: { x: 45, y: 66 }
+      j1: { x: 47, y: 61 }, j2: { x: 14, y: 17 }, j3: { x: 81, y: 36 },
+      j4: { x: 54, y: 55 }, j5: { x: 66, y: 18 }, d1: { x: 49, y: 57 },
+      d2: { x: 29, y: 29 }, d3: { x: 75, y: 38 }, d4: { x: 51, y: 42 },
+      d5: { x: 51, y: 24 }, ball: { x: 45, y: 66 }
     });
   };
 
@@ -155,7 +138,7 @@ export const TacticalSimulator = ({ user, onLogout }) => {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <span className="font-bold text-xl tracking-tight text-on-surface">TACTIC<span className="text-secondary">AI</span></span>
-            <span className="text-xs uppercase text-on-surface-variant font-semibold">Simulador Táctico</span>
+            <span className="text-xs uppercase text-on-surface-variant font-semibold">Simulador Baloncesto NBA</span>
           </div>
           <div className="hidden sm:flex items-center gap-2 bg-surface-container-low px-3 py-1 rounded-full border border-surface-container">
             <span className="relative flex h-2 w-2">
@@ -173,11 +156,7 @@ export const TacticalSimulator = ({ user, onLogout }) => {
             </div>
             <span className="text-sm font-semibold hidden md:inline">{user?.email || 'Analista Táctico'}</span>
           </div>
-          <button
-            onClick={onLogout}
-            className="p-1.5 rounded hover:bg-red-50 text-on-surface-variant hover:text-error transition-colors"
-            title="Cerrar sesión"
-          >
+          <button onClick={onLogout} className="p-1.5 rounded hover:bg-red-50 text-on-surface-variant hover:text-error transition-colors">
             <span className="material-symbols-outlined text-xl">logout</span>
           </button>
         </div>
@@ -185,57 +164,46 @@ export const TacticalSimulator = ({ user, onLogout }) => {
 
       {/* Workspace Principal */}
       <main className="pt-20 px-6 pb-6 max-w-7xl mx-auto">
-        {/* Barra de Controles Tácticos */}
         <div className="bg-white p-4 rounded-lg shadow-sm mb-6 border border-surface-container flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 bg-surface-container-low p-1 rounded">
-            <button
-              onClick={() => setSport('bball')}
-              className={`px-4 py-1.5 rounded text-xs font-bold uppercase transition-all flex items-center gap-1.5 ${
-                sport === 'bball' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant'
-              }`}
-            >
-              <span className="material-symbols-outlined text-sm">sports_basketball</span> Baloncesto
+            <button className="px-4 py-1.5 rounded text-xs font-bold uppercase bg-primary text-white shadow-sm flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm">sports_basketball</span> BALONCESTO (NBA)
             </button>
             <button
-              onClick={() => setSport('tennis')}
-              className={`px-4 py-1.5 rounded text-xs font-bold uppercase transition-all flex items-center gap-1.5 ${
-                sport === 'tennis' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant'
-              }`}
+              onClick={onSwitchToTennis}
+              className="px-4 py-1.5 rounded text-xs font-bold uppercase text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1.5"
             >
-              <span className="material-symbols-outlined text-sm">sports_tennis</span> Tenis
+              <span className="material-symbols-outlined text-sm">sports_tennis</span> TENIS (ATP TOUR)
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleReset}
-              className="px-4 py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-xs font-bold uppercase flex items-center gap-1 transition-colors"
-            >
-              <span className="material-symbols-outlined text-sm">restart_alt</span> Limpiar Cancha
-            </button>
-          </div>
+          <button
+            onClick={handleReset}
+            className="px-4 py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-xs font-bold uppercase flex items-center gap-1 transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">restart_alt</span> Limpiar Cancha
+          </button>
         </div>
 
-        {/* Layout en 2 Columnas: Cancha a la Izquierda, Telemetría a la Derecha */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           
-          {/* Cancha Interactivas (8 columnas) */}
+          {/* Cancha 2D Interactive SVG */}
           <div className="xl:col-span-8 bg-white p-4 rounded-lg shadow-sm border border-surface-container">
             <div className="flex items-center justify-between mb-3 text-xs font-semibold">
-              <div className="flex gap-4">
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-secondary"></span> Ofensiva (Azul)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-error"></span> Defensa (Rojo)</span>
-              </div>
-              <span className="text-on-surface-variant font-mono">Espaciamiento: 94.2%</span>
+              <span className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+                Ofensiva vs Defensa (5v5)
+              </span>
+              <span className="text-on-surface-variant font-mono">
+                Superficie: Madera Parquet
+              </span>
             </div>
 
-            {/* Canvas de Cancha */}
             <div
               ref={courtRef}
-              className="relative w-full aspect-[28/18] select-none rounded overflow-hidden shadow-inner cursor-crosshair border border-amber-200"
+              className="relative w-full aspect-[28/18] select-none rounded overflow-hidden shadow-inner cursor-crosshair border border-surface-container"
               style={{ backgroundColor: '#FAF5EE' }}
             >
-              {/* SVG Marcas de la Cancha */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 900 620">
                 <rect x="20" y="20" width="860" height="580" fill="none" stroke="#334155" strokeWidth="2.5" />
                 <line x1="20" y1="560" x2="880" y2="560" stroke="#334155" strokeWidth="2" />
@@ -243,23 +211,32 @@ export const TacticalSimulator = ({ user, onLogout }) => {
                 <circle cx="450" cy="72" r="14" fill="none" stroke="#F59E0B" strokeWidth="3" />
                 <path d="M 85 185 A 395 395 0 0 0 815 185" fill="none" stroke="#334155" strokeWidth="2" />
 
-                {/* Mapa de Calor */}
+                {/* Heatmap Overlay */}
                 {showHeatmap && (
                   <g className="transition-opacity duration-300">
-                    <ellipse cx={`${positions.j2.x * 9}`} cy={`${positions.j2.y * 6.2}`} rx="70" ry="55" fill="#10B981" fillOpacity="0.35" />
-                    <ellipse cx="450" cy="110" fill="#F59E0B" fillOpacity="0.2" rx="90" ry="60" />
+                    <ellipse
+                      cx={`${positions.j2.x * 9}`}
+                      cy={`${positions.j2.y * 6.2}`}
+                      rx="80" ry="60" fill="#10B981" fillOpacity="0.35"
+                    />
                   </g>
                 )}
 
-                {/* Vectores Tácticos */}
+                {/* Vector Trajectories Overlay */}
                 {showVectors && (
                   <g className="transition-opacity duration-300">
-                    <path d={`M ${positions.j1.x * 9} ${positions.j1.y * 6.2} Q 250 310 ${positions.j2.x * 9} ${positions.j2.y * 6.2}`} fill="none" stroke="#059669" strokeWidth="3" strokeDasharray="6 6" />
+                    <line
+                      x1={`${positions.j1.x * 9}`}
+                      y1={`${positions.j1.y * 6.2}`}
+                      x2={`${positions.j2.x * 9}`}
+                      y2={`${positions.j2.y * 6.2}`}
+                      stroke="#F59E0B" strokeWidth="3" strokeDasharray="6 6"
+                    />
                   </g>
                 )}
               </svg>
 
-              {/* Fichas de Jugadores Arrastrables */}
+              {/* Tokens de Jugadores Arrastrables */}
               {Object.entries(positions).map(([key, pos]) => {
                 const isOffense = key.startsWith('j');
                 const isBall = key === 'ball';
@@ -273,7 +250,7 @@ export const TacticalSimulator = ({ user, onLogout }) => {
                     style={{ top: `${pos.y}%`, left: `${pos.x}%`, transform: 'translate(-50%, -50%)' }}
                   >
                     {isBall ? (
-                      <div className="w-5 h-5 rounded-full bg-amber-500 shadow-lg ring-2 ring-white flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-amber-400 shadow-lg ring-2 ring-white flex items-center justify-center">
                         <div className="w-2.5 h-0.5 bg-black/40 rotate-45"></div>
                       </div>
                     ) : (
@@ -288,7 +265,6 @@ export const TacticalSimulator = ({ user, onLogout }) => {
               })}
             </div>
 
-            {/* Botón de Acción Principal */}
             <div className="mt-4 flex justify-end">
               <button
                 onClick={handleRunSimulation}
@@ -303,17 +279,14 @@ export const TacticalSimulator = ({ user, onLogout }) => {
             </div>
           </div>
 
-          {/* Panel de Telemetría Táctica de la IA (4 columnas) */}
+          {/* Panel de Telemetría */}
           <div className="xl:col-span-4 flex flex-col gap-6">
-            
-            {/* Card 1: Porcentaje de Probabilidad */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container flex flex-col items-center">
               <div className="w-full flex justify-between items-center mb-4">
                 <span className="text-xs uppercase font-bold text-on-surface-variant">Motor Predictivo IA</span>
                 <span className="text-xs bg-surface-container px-2 py-0.5 rounded font-mono font-medium">{telemetry.thread}</span>
               </div>
 
-              {/* Gauge Circular */}
               <div className="relative w-36 h-36 flex items-center justify-center">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                   <circle cx="60" cy="60" r="50" fill="none" stroke="#CBD5E1" strokeWidth="10" opacity="0.4" />
@@ -333,21 +306,20 @@ export const TacticalSimulator = ({ user, onLogout }) => {
 
               <div className="w-full grid grid-cols-2 gap-3 mt-6">
                 <div className="bg-surface-container-low p-3 rounded">
-                  <span className="text-xs text-on-surface-variant block">Tiro Liberado</span>
+                  <span className="text-xs text-on-surface-variant block">Efectividad Zona</span>
                   <span className="text-lg font-bold">{telemetry.openShot}%</span>
                 </div>
                 <div className="bg-surface-container-low p-3 rounded">
-                  <span className="text-xs text-on-surface-variant block">Falta Recibida</span>
-                  <span className="text-lg font-bold">21%</span>
+                  <span className="text-xs text-on-surface-variant block">Riesgo Error</span>
+                  <span className="text-lg font-bold">19%</span>
                 </div>
               </div>
             </div>
 
-            {/* Card 2: Recomendación Táctica */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container">
               <div className="flex items-center gap-2 text-emerald-700 mb-3">
                 <span className="material-symbols-outlined">smart_toy</span>
-                <span className="text-xs uppercase font-bold tracking-wider">Recomendación Táctica</span>
+                <span className="text-xs uppercase font-bold tracking-wider">Recomendación Táctica IA</span>
               </div>
               <div className="bg-surface-container-low p-4 rounded-lg">
                 <span className="block text-sm font-bold text-on-surface mb-1">{telemetry.recommendation}</span>
@@ -357,27 +329,16 @@ export const TacticalSimulator = ({ user, onLogout }) => {
               </div>
             </div>
 
-            {/* Card 3: Capas Visuales HUD */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container">
               <span className="text-sm font-bold text-on-surface block mb-3">Capas Visuales</span>
               <div className="space-y-2">
                 <label className="flex items-center justify-between p-2 rounded bg-surface-container-low cursor-pointer text-xs font-medium">
                   <span>Mapa de Calor (Heatmap)</span>
-                  <input
-                    type="checkbox"
-                    checked={showHeatmap}
-                    onChange={(e) => setShowHeatmap(e.target.checked)}
-                    className="w-4 h-4 text-primary"
-                  />
+                  <input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} className="w-4 h-4 text-primary" />
                 </label>
                 <label className="flex items-center justify-between p-2 rounded bg-surface-container-low cursor-pointer text-xs font-medium">
                   <span>Vectores de Movimiento</span>
-                  <input
-                    type="checkbox"
-                    checked={showVectors}
-                    onChange={(e) => setShowVectors(e.target.checked)}
-                    className="w-4 h-4 text-primary"
-                  />
+                  <input type="checkbox" checked={showVectors} onChange={(e) => setShowVectors(e.target.checked)} className="w-4 h-4 text-primary" />
                 </label>
               </div>
             </div>
