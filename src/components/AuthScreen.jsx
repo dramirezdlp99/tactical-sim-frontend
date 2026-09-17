@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export const AuthScreen = ({ onLoginSuccess }) => {
+export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
   const [role, setRole] = useState('coach');
   const [email, setEmail] = useState('c.mendoza@olympic-tactics.org');
   const [password, setPassword] = useState('Tactical#2025$Alpha');
@@ -35,7 +35,6 @@ export const AuthScreen = ({ onLoginSuccess }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Simular o conectar con el backend Java JWT login
     onLoginSuccess({
       email,
       role: role === 'coach' ? 'ROLE_COACH' : 'ROLE_ANALYST',
@@ -150,7 +149,7 @@ export const AuthScreen = ({ onLoginSuccess }) => {
                   maxLength="1"
                   value={digit}
                   onChange={(e) => handleOtpChange(e.target.value, idx)}
-                  className="h-12 text-center font-mono text-lg text-on-surface bg-surface-container-lowest rounded-lg border border-surface-container focus:ring-2 focus:ring-secondary text-bold"
+                  className="h-12 text-center font-mono text-lg text-on-surface bg-surface-container-lowest rounded-lg border border-surface-container focus:ring-2 focus:ring-secondary font-bold"
                 />
               ))}
             </div>
@@ -164,6 +163,20 @@ export const AuthScreen = ({ onLoginSuccess }) => {
             <span className="material-symbols-outlined">arrow_forward</span>
           </button>
         </form>
+
+        {/* Enlace para ir al Registro Enterprise */}
+        <div className="mt-6 pt-4 border-t border-surface-container flex items-center justify-between">
+          <span className="text-xs text-on-surface-variant">¿No tiene cuenta de club registrada?</span>
+          <button
+            type="button"
+            onClick={onSwitchToRegister}
+            className="text-xs font-bold text-secondary hover:underline flex items-center gap-1"
+          >
+            <span>Solicitar Alta Enterprise</span>
+            <span className="material-symbols-outlined text-sm">open_in_new</span>
+          </button>
+        </div>
+
       </div>
     </div>
   );
