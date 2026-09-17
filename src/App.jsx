@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthScreen } from './components/AuthScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { TacticalSimulator } from './components/TacticalSimulator';
@@ -7,6 +7,16 @@ import { TennisSimulator } from './components/TennisSimulator';
 export function App() {
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login'); // 'login', 'register', 'bball', 'tennis'
+
+  // Verificar si ya existe un token en localStorage al recargar la página
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token');
+    const savedEmail = localStorage.getItem('email');
+    if (savedToken && savedEmail) {
+      setUser({ email: savedEmail, token: savedToken });
+      setCurrentView('bball');
+    }
+  }, []);
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
@@ -19,6 +29,8 @@ export function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('email');
     setUser(null);
     setCurrentView('login');
   };
