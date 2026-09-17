@@ -3,7 +3,12 @@ import React, { useState, useRef } from 'react';
 export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
   const [surface, setSurface] = useState('hard'); // 'hard', 'clay', 'grass'
   const [loading, setLoading] = useState(false);
-  
+
+  // Partido y Tenistas dinámicos
+  const [matchPreset, setMatchPreset] = useState('alcaraz-sinner');
+  const [playerServer, setPlayerServer] = useState('C. ALCARAZ');
+  const [playerReceiver, setPlayerReceiver] = useState('J. SINNER');
+
   const [positions, setPositions] = useState({
     alcaraz: { x: 9, y: 58 },  // Servidor
     sinner: { x: 92, y: 40 },   // Restador
@@ -22,6 +27,21 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
   const courtRef = useRef(null);
   const activeTokenRef = useRef(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
+
+  const handleMatchChange = (e) => {
+    const val = e.target.value;
+    setMatchPreset(val);
+    if (val === 'alcaraz-sinner') {
+      setPlayerServer('C. ALCARAZ');
+      setPlayerReceiver('J. SINNER');
+    } else if (val === 'nadal-djokovic') {
+      setPlayerServer('R. NADAL');
+      setPlayerReceiver('N. DJOKOVIC');
+    } else {
+      setPlayerServer('D. MEDVEDEV');
+      setPlayerReceiver('A. ZVEREV');
+    }
+  };
 
   const handlePointerDown = (e, key) => {
     activeTokenRef.current = key;
@@ -59,16 +79,17 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
     setLoading(true);
 
     try {
+      const token = user?.token || localStorage.getItem('token') || '';
       const res = await fetch('http://localhost:9096/api/v1/simulation/run', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token || ''}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          match_id: 'ATP-GRAND-SLAM-2026',
-          team_home_positions: [{ player_id: 'ALCARAZ', x: positions.alcaraz.x, y: positions.alcaraz.y }],
-          team_away_positions: [{ player_id: 'SINNER', x: positions.sinner.x, y: positions.sinner.y }],
+          match_id: `ATP-${matchPreset.toUpperCase()}-2026`,
+          team_home_positions: [{ player_id: playerServer, x: positions.alcaraz.x, y: positions.alcaraz.y }],
+          team_away_positions: [{ player_id: playerReceiver, x: positions.sinner.x, y: positions.sinner.y }],
           ball_position: { player_id: 'BALL', x: positions.ball.x, y: positions.ball.y }
         })
       });
@@ -100,7 +121,6 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
     }
   };
 
-  // Color de pista según la superficie
   const getSurfaceColor = () => {
     if (surface === 'clay') return '#f5d5cc'; // Tierra Batida
     if (surface === 'grass') return '#d4ecd5'; // Hierba Wimbledon
@@ -139,7 +159,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
       </header>
 
       <main className="pt-20 px-6 pb-6 max-w-7xl mx-auto">
-        {/* Barra de Controles y Selector de Superficie */}
+        {/* Barra de Controles, Selector de Partido y Superficie */}
         <div className="bg-white p-4 rounded-lg shadow-sm mb-6 border border-surface-container flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 bg-surface-container-low p-1 rounded">
             <button
@@ -153,17 +173,32 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold uppercase text-on-surface-variant">Superficie:</span>
-            <select
-              value={surface}
-              onChange={(e) => setSurface(e.target.value)}
-              className="bg-surface-container-low text-on-surface text-xs font-bold px-3 py-1.5 rounded border border-surface-container focus:outline-none cursor-pointer"
-            >
-              <option value="hard">Pista Dura (US Open)</option>
-              <option value="clay">Tierra Batida (Roland Garros)</option>
-              <option value="grass">Hierba Natural (Wimbledon)</option>
-            </select>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase text-on-surface-variant">Partido:</span>
+              <select
+                value={matchPreset}
+                onChange={handleMatchChange}
+                className="bg-surface-container-low text-on-surface text-xs font-bold px-3 py-1.5 rounded border border-surface-container focus:outline-none cursor-pointer"
+              >
+                <option value="alcaraz-sinner">C. Alcaraz vs J. Sinner</option>
+                <option value="nadal-djokovic">R. Nadal vs N. Djokovic</option>
+                <option value="medvedev-zverev">D. Medvedev vs A. Zverev</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase text-on-surface-variant">Superficie:</span>
+              <select
+                value={surface}
+                onChange={(e) => setSurface(e.target.value)}
+                className="bg-surface-container-low text-on-surface text-xs font-bold px-3 py-1.5 rounded border border-surface-container focus:outline-none cursor-pointer"
+              >
+                <option value="hard">Pista Dura (US Open)</option>
+                <option value="clay">Tierra Batida (Roland Garros)</option>
+                <option value="grass">Hierba Natural (Wimbledon)</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -175,7 +210,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
             <div className="flex items-center justify-between mb-3 text-xs font-semibold">
               <span className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                C. Alcaraz vs J. Sinner (Set 3 Break Point)
+                {playerServer} vs {playerReceiver} (Set 3 Break Point)
               </span>
               <span className="text-on-surface-variant font-mono">Escala 78ft x 36ft</span>
             </div>
@@ -210,7 +245,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
               {/* Fichas Arrastrables */}
               {Object.entries(positions).map(([key, pos]) => {
                 const isBall = key === 'ball';
-                const isAlcaraz = key === 'alcaraz';
+                const isServer = key === 'alcaraz';
                 return (
                   <div
                     key={key}
@@ -226,9 +261,9 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
                       </div>
                     ) : (
                       <div className={`w-8 h-8 rounded-full font-bold flex items-center justify-center text-xs shadow-md ring-2 ring-white ${
-                        isAlcaraz ? 'bg-primary text-white' : 'bg-error text-white'
+                        isServer ? 'bg-primary text-white' : 'bg-error text-white'
                       }`}>
-                        {isAlcaraz ? 'S' : 'R'}
+                        {isServer ? 'S' : 'R'}
                       </div>
                     )}
                   </div>
@@ -302,7 +337,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
               <div className="bg-surface-container-low p-3 rounded-lg">
                 <span className="block text-sm font-bold text-on-surface mb-1">{telemetry.recommendation}</span>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
-                  Jannik Sinner muestra un retroceso de 1.85m tras la línea de fondo ante el punto de quiebre. Su índice de reacción al bote resulta en un 84% de devoluciones cortas.
+                  {playerReceiver} muestra un retroceso tras la línea de fondo ante el punto de quiebre. Su índice de reacción al bote resulta en devoluciones cortas.
                 </p>
               </div>
             </div>
