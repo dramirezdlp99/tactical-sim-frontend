@@ -9,11 +9,13 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
   const [playerServer, setPlayerServer] = useState('C. ALCARAZ');
   const [playerReceiver, setPlayerReceiver] = useState('J. SINNER');
 
-  const [positions, setPositions] = useState({
+  const defaultPositions = {
     alcaraz: { x: 9, y: 58 },  // Servidor
     sinner: { x: 92, y: 40 },   // Restador
     ball: { x: 46, y: 55 }      // Pelota
-  });
+  };
+
+  const [positions, setPositions] = useState(defaultPositions);
 
   const [telemetry, setTelemetry] = useState({
     holdProb: 78,
@@ -41,6 +43,10 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
       setPlayerServer('D. MEDVEDEV');
       setPlayerReceiver('A. ZVEREV');
     }
+  };
+
+  const handleReset = () => {
+    setPositions(defaultPositions);
   };
 
   const handlePointerDown = (e, key) => {
@@ -159,7 +165,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
       </header>
 
       <main className="pt-20 px-6 pb-6 max-w-7xl mx-auto">
-        {/* Barra de Controles, Selector de Partido y Superficie */}
+        {/* Barra de Controles */}
         <div className="bg-white p-4 rounded-lg shadow-sm mb-6 border border-surface-container flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 bg-surface-container-low p-1 rounded">
             <button
@@ -199,10 +205,17 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
                 <option value="grass">Hierba Natural (Wimbledon)</option>
               </select>
             </div>
+
+            <button
+              onClick={handleReset}
+              className="px-3 py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-xs font-bold uppercase flex items-center gap-1 transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">restart_alt</span> Limpiar Cancha
+            </button>
           </div>
         </div>
 
-        {/* Workspace Principal en 2 Columnas */}
+        {/* Workspace Principal */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* Cancha de Tenis ATP (7 columnas) */}
@@ -215,34 +228,28 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
               <span className="text-on-surface-variant font-mono">Escala 78ft x 36ft</span>
             </div>
 
-            {/* Cancha de Tenis Reglamentaria SVG */}
             <div
               ref={courtRef}
               className="relative w-full aspect-[28/15] select-none rounded overflow-hidden shadow-inner cursor-crosshair border border-surface-container"
               style={{ backgroundColor: '#eff4ff' }}
             >
               <svg className="w-full h-full absolute inset-0" viewBox="0 0 1000 520">
-                {/* Pista Central */}
                 <rect x="70" y="50" width="860" height="420" rx="4" fill={getSurfaceColor()} />
                 <rect x="100" y="70" width="800" height="380" fill="none" stroke="#0b1c30" strokeWidth="2.5" />
                 
-                {/* Pasillos de Dobles y Líneas de Saque */}
                 <line x1="100" y1="115" x2="900" y2="115" stroke="#0b1c30" strokeWidth="1.8" />
                 <line x1="100" y1="405" x2="900" y2="405" stroke="#0b1c30" strokeWidth="1.8" />
                 <line x1="280" y1="115" x2="280" y2="405" stroke="#0b1c30" strokeWidth="2" />
                 <line x1="720" y1="115" x2="720" y2="405" stroke="#0b1c30" strokeWidth="2" />
                 <line x1="280" y1="260" x2="720" y2="260" stroke="#0b1c30" strokeWidth="2" />
 
-                {/* Red Central */}
                 <line x1="500" y1="58" x2="500" y2="462" stroke="#131b2e" strokeWidth="4.5" />
                 <line x1="500" y1="70" x2="500" y2="450" stroke="#FFFFFF" strokeWidth="2" strokeDasharray="2 3" />
 
-                {/* Vector de Saque */}
                 <path d="M 90,320 Q 380,290 680,270" fill="none" stroke="#069669" strokeWidth="3" strokeDasharray="6 4" />
                 <circle cx="680" cy="270" r="6" fill="#069669" />
               </svg>
 
-              {/* Fichas Arrastrables */}
               {Object.entries(positions).map(([key, pos]) => {
                 const isBall = key === 'ball';
                 const isServer = key === 'alcaraz';
@@ -285,7 +292,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
             </div>
           </div>
 
-          {/* Panel de Telemetría ATP (5 columnas) */}
+          {/* Panel de Telemetría ATP */}
           <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container flex flex-col items-center">
               <span className="text-xs uppercase font-bold text-on-surface-variant block mb-4 w-full">Telemetría Probabilística de Servicio</span>
