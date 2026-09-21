@@ -1,5 +1,23 @@
 import React, { useState } from 'react';
 
+/** Máscara de teléfono para Colombia: +57 300 123 4567 */
+function formatColombianPhone(raw) {
+  const digits = raw.replace(/\D/g, '').slice(0, 10);
+  const parts = [];
+  if (digits.length > 0) parts.push(digits.slice(0, 3));
+  if (digits.length > 3) parts.push(digits.slice(3, 6));
+  if (digits.length > 6) parts.push(digits.slice(6, 10));
+  return parts.join(' ');
+}
+
+function validatePassword(password) {
+  const errors = [];
+  if (password.length < 8) errors.push('Mínimo 8 caracteres.');
+  if (!/[A-Z]/.test(password)) errors.push('Debe incluir al menos una letra mayúscula.');
+  if (!/[0-9]/.test(password)) errors.push('Debe incluir al menos un número.');
+  return errors;
+}
+
 export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [orgType, setOrgType] = useState('franchise');
   const [role, setRole] = useState('coach');
@@ -13,9 +31,28 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [compliance, setCompliance] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [passwordErrors, setPasswordErrors] = useState([]);
+
+  const handlePhoneChange = (e) => {
+    setPhone(formatColombianPhone(e.target.value));
+  };
+
+  const handlePasswordChange = (e) => {
+    const value = e.target.value;
+    setPassword(value);
+    setPasswordErrors(validatePassword(value));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
+
+    const pwErrors = validatePassword(password);
+    setPasswordErrors(pwErrors);
+    if (pwErrors.length > 0) {
+      setErrorMsg('La contraseña no cumple los requisitos mínimos de seguridad.');
+      return;
+    }
     if (password !== confirmPassword) {
       setErrorMsg('Las contraseñas no coinciden');
       return;
@@ -26,10 +63,8 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
     }
 
     setLoading(true);
-    setErrorMsg('');
 
     try {
-      // Intento de registro hacia el backend Spring Boot
       const res = await fetch('http://localhost:9096/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -38,28 +73,32 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
           lastName: fullName.split(' ').slice(1).join(' ') || 'Especialista',
           email,
           password,
-          role: role === 'coach' ? 'ROLE_COACH' : 'ROLE_ANALYST'
+          role: role === 'coach' ? 'ROLE_COACH' : 'ROLE_ANALYST',
+          // CAMBIO: RegisterRequest.java ahora sí tiene el campo entityType
+          // (enum FRANCHISE/ACADEMY/FEDERATION). Jackson deserializa enums
+          // en mayúsculas exactas por defecto, por eso .toUpperCase().
+          entityType: orgType.toUpperCase()
         })
       });
 
-      if (res.ok) {
-        const json = await res.json();
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.data?.accessToken) {
         onRegisterSuccess({
           email,
-          token: json.data?.accessToken || 'jwt-register-token'
+          token: json.data.accessToken,
+          // Se prioriza lo que confirma el backend; si por lo que sea no
+          // viene en la respuesta, se usa lo que el usuario eligió.
+          entityType: json.data.entityType || orgType.toUpperCase()
         });
       } else {
-        // Contingencia en caso de que ya exista o el backend no esté encendido
-        onRegisterSuccess({
-          email,
-          token: 'mock-register-jwt-token-2026'
-        });
+        // CAMBIO CLAVE: sin fallback de token falso. Un registro fallido
+        // (email duplicado, validación del backend, etc.) ahora se ve
+        // como un error real en pantalla, no como un "éxito" fingido.
+        setErrorMsg(json?.message || 'No se pudo completar el registro. Intenta nuevamente.');
       }
     } catch (err) {
-      onRegisterSuccess({
-        email,
-        token: 'mock-register-jwt-token-2026'
-      });
+      setErrorMsg('No se pudo conectar con el servidor (puerto 9096). Verifica que el backend esté encendido.');
     } finally {
       setLoading(false);
     }
@@ -134,7 +173,6 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Nombre Completo *</label>
-
               <input
                 type="text"
                 value={fullName}
@@ -147,7 +185,6 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
 
             <div>
               <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Correo Institucional *</label>
-
               <input
                 type="email"
                 value={email}
@@ -160,7 +197,6 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
 
             <div>
               <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Club u Organización *</label>
-
               <input
                 type="text"
                 value={club}
@@ -173,33 +209,43 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
 
             <div>
               <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Teléfono 2FA *</label>
-
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+34 600 123 456"
-                className="w-full h-10 px-3 bg-surface-container-low border border-surface-container rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
-                required
-              />
+              <div className="flex">
+                <span className="inline-flex items-center px-3 h-10 rounded-l-lg border border-r-0 border-surface-container bg-surface-container text-on-surface-variant text-sm font-semibold">
+                  +57
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={handlePhoneChange}
+                  placeholder="300 123 4567"
+                  className="w-full h-10 px-3 bg-surface-container-low border border-surface-container rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                  required
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Contraseña *</label>
-
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handlePasswordChange}
                 placeholder="••••••••••••••"
                 className="w-full h-10 px-3 bg-surface-container-low border border-surface-container rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
                 required
               />
+              {passwordErrors.length > 0 && (
+                <ul className="mt-1.5 text-xs text-red-600 list-disc list-inside space-y-0.5">
+                  {passwordErrors.map((err) => (
+                    <li key={err}>{err}</li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Confirmar Contraseña *</label>
-
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
@@ -230,7 +276,7 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full sm:w-auto px-6 h-11 bg-primary hover:bg-secondary text-white font-bold rounded-lg shadow transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 h-11 bg-primary hover:bg-secondary text-white font-bold rounded-lg shadow transition-all flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <span>{loading ? 'REGISTRANDO...' : 'Crear Cuenta Enterprise'}</span>
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
