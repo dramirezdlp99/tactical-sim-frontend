@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { getModeConfig } from './entityModes';
+import { BASKETBALL_PLAYS, getPlayById } from './predefinedPlays';
 
 export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
   const [showHeatmap, setShowHeatmap] = useState(true);
@@ -10,6 +11,14 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
   // CAMBIO: la entidad elegida en el registro ahora sí cambia el enfoque
   // del panel (Franquicia/Academia/Federación), no solo el nombre del rol.
   const modeConfig = useMemo(() => getModeConfig(user?.entityType), [user?.entityType]);
+
+  // NUEVO: jugadas predeterminadas. 'custom' = el usuario mueve las
+  // fichas libremente; cualquier otro id posiciona todo automáticamente.
+  const [selectedPlayId, setSelectedPlayId] = useState('custom');
+  const selectedPlay = useMemo(
+    () => getPlayById(BASKETBALL_PLAYS, selectedPlayId),
+    [selectedPlayId]
+  );
 
   const [telemetry, setTelemetry] = useState({
     probability: null,
@@ -39,12 +48,27 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
 
   const handlePointerDown = (e, key) => {
     activeTokenRef.current = key;
+    // Si el usuario arrastra una ficha, la jugada deja de coincidir con
+    // el preset elegido: se marca como "Posición Libre" para no mostrar
+    // una descripción que ya no corresponde a las posiciones reales.
+    setSelectedPlayId('custom');
     const tokenRect = e.currentTarget.getBoundingClientRect();
     dragOffsetRef.current = {
       x: e.clientX - tokenRect.left,
       y: e.clientY - tokenRect.top
     };
     e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePlayChange = (e) => {
+    const playId = e.target.value;
+    setSelectedPlayId(playId);
+    const play = getPlayById(BASKETBALL_PLAYS, playId);
+    if (play.positions) {
+      setPositions(play.positions);
+    }
+    setTelemetry({ probability: null, openShot: null, recommendation: '—', thread: '—' });
+    setErrorMessage('');
   };
 
   const handlePointerMove = (e, key) => {
@@ -140,6 +164,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
     });
     setTelemetry({ probability: null, openShot: null, recommendation: '—', thread: '—' });
     setErrorMessage('');
+    setSelectedPlayId('custom');
   };
 
   return (
@@ -191,13 +216,37 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
             </button>
           </div>
 
-          <button
-            onClick={handleReset}
-            className="px-4 py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-xs font-bold uppercase flex items-center gap-1 transition-colors"
-          >
-            <span className="material-symbols-outlined text-sm">restart_alt</span> Limpiar Cancha
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase text-on-surface-variant">Jugada:</span>
+              <select
+                value={selectedPlayId}
+                onChange={handlePlayChange}
+                className="bg-surface-container-low text-on-surface text-xs font-bold px-3 py-1.5 rounded border border-surface-container focus:outline-none cursor-pointer"
+              >
+                {BASKETBALL_PLAYS.map((play) => (
+                  <option key={play.id} value={play.id}>{play.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleReset}
+              className="px-4 py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-xs font-bold uppercase flex items-center gap-1 transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">restart_alt</span> Limpiar Cancha
+            </button>
+          </div>
         </div>
+
+        {selectedPlay.id !== 'custom' && (
+          <div className="mb-6 p-3 bg-secondary/10 border border-secondary/30 rounded-lg flex items-start gap-2">
+            <span className="material-symbols-outlined text-secondary text-sm mt-0.5">school</span>
+            <p className="text-xs text-on-surface leading-relaxed">
+              <span className="font-bold">{selectedPlay.name}:</span> {selectedPlay.description}
+            </p>
+          </div>
+        )}
 
         {errorMessage && (
           <div className="mb-6 p-3 bg-red-100 border border-red-300 text-red-800 text-xs rounded-lg font-semibold flex items-center gap-2">
