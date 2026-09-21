@@ -1,15 +1,21 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import { getModeConfig } from './entityModes';
 
 export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
   const [loading, setLoading] = useState(false);
-  
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // CAMBIO: la entidad elegida en el registro ahora sí cambia el enfoque
+  // del panel (Franquicia/Academia/Federación), no solo el nombre del rol.
+  const modeConfig = useMemo(() => getModeConfig(user?.entityType), [user?.entityType]);
+
   const [telemetry, setTelemetry] = useState({
-    probability: 85,
-    openShot: 64,
-    recommendation: 'Pase Inmediato a J2 (Esquina Izquierda)',
-    thread: 'WorkerThread-Async'
+    probability: null,
+    openShot: null,
+    recommendation: '—',
+    thread: '—'
   });
 
   // Coordenadas para Baloncesto (5v5)
@@ -31,7 +37,6 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
   const activeTokenRef = useRef(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
-  // Manejadores de arrastre interactivo
   const handlePointerDown = (e, key) => {
     activeTokenRef.current = key;
     const tokenRect = e.currentTarget.getBoundingClientRect();
@@ -64,11 +69,14 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
     }
   };
 
-  // Simulación de respuesta con la IA
   const handleRunSimulation = async () => {
     setLoading(true);
+    setErrorMessage('');
 
     try {
+      // CAMBIO CLAVE: antes solo se enviaba D1, ahora se envían los 5
+      // defensores reales (d1-d5). El motor de IA estaba evaluando la
+      // jugada con información incompleta de la defensa.
       const payload = {
         match_id: 'MATCH-BBALL-2026',
         team_home_positions: [
@@ -79,7 +87,11 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
           { player_id: 'J5', x: positions.j5.x, y: positions.j5.y }
         ],
         team_away_positions: [
-          { player_id: 'D1', x: positions.d1.x, y: positions.d1.y }
+          { player_id: 'D1', x: positions.d1.x, y: positions.d1.y },
+          { player_id: 'D2', x: positions.d2.x, y: positions.d2.y },
+          { player_id: 'D3', x: positions.d3.x, y: positions.d3.y },
+          { player_id: 'D4', x: positions.d4.x, y: positions.d4.y },
+          { player_id: 'D5', x: positions.d5.x, y: positions.d5.y }
         ],
         ball_position: { player_id: 'BALL', x: positions.ball.x, y: positions.ball.y }
       };
@@ -93,30 +105,27 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
         body: JSON.stringify(payload)
       });
 
-      if (res.ok) {
-        const json = await res.json();
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.data) {
         const data = json.data;
         setTelemetry({
           probability: Math.round(data.success_probability * 100),
           openShot: Math.round(data.success_probability * 75),
-          recommendation: 'Pase Inmediato a J2 (Esquina Izquierda)',
+          recommendation: data.recommended_action || 'Sin recomendación disponible',
           thread: data.execution_thread || 'WorkerThread-Async'
         });
       } else {
-        setTelemetry({
-          probability: 88,
-          openShot: 66,
-          recommendation: 'Pase Inmediato a J2 (Esquina Izquierda)',
-          thread: 'WorkerThread-Async'
-        });
+        // CAMBIO CLAVE: antes, si la petición fallaba, se rellenaba con
+        // telemetría inventada (88%, 66%, etc.) como si la IA hubiera
+        // respondido. Eso ocultaba errores reales del backend/IA. Ahora
+        // se muestra el error y la telemetría queda vacía ("—").
+        setErrorMessage(
+          json?.message || `Error del servidor (HTTP ${res.status}) al ejecutar la simulación.`
+        );
       }
     } catch (err) {
-      setTelemetry({
-        probability: 85,
-        openShot: 64,
-        recommendation: 'Pase Inmediato a J2 (Esquina Izquierda)',
-        thread: 'WorkerThread-Async'
-      });
+      setErrorMessage('No se pudo conectar con el backend (puerto 9096) o con el motor de IA.');
     } finally {
       setLoading(false);
     }
@@ -129,6 +138,8 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
       d2: { x: 29, y: 29 }, d3: { x: 75, y: 38 }, d4: { x: 51, y: 42 },
       d5: { x: 51, y: 24 }, ball: { x: 45, y: 66 }
     });
+    setTelemetry({ probability: null, openShot: null, recommendation: '—', thread: '—' });
+    setErrorMessage('');
   };
 
   return (
@@ -147,6 +158,9 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
             </span>
             <span className="text-xs text-emerald-700 font-mono font-medium">AI Engine Online (v4.2.1-prod)</span>
           </div>
+          <span className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold uppercase px-2.5 py-1 rounded-full bg-secondary/10 text-secondary">
+            {modeConfig.label}
+          </span>
         </div>
 
         <div className="flex items-center gap-4">
@@ -185,8 +199,15 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
           </button>
         </div>
 
+        {errorMessage && (
+          <div className="mb-6 p-3 bg-red-100 border border-red-300 text-red-800 text-xs rounded-lg font-semibold flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">error</span>
+            {errorMessage}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          
+
           {/* Cancha 2D Interactive SVG */}
           <div className="xl:col-span-8 bg-white p-4 rounded-lg shadow-sm border border-surface-container">
             <div className="flex items-center justify-between mb-3 text-xs font-semibold">
@@ -211,7 +232,6 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
                 <circle cx="450" cy="72" r="14" fill="none" stroke="#F59E0B" strokeWidth="3" />
                 <path d="M 85 185 A 395 395 0 0 0 815 185" fill="none" stroke="#334155" strokeWidth="2" />
 
-                {/* Heatmap Overlay */}
                 {showHeatmap && (
                   <g className="transition-opacity duration-300">
                     <ellipse
@@ -222,7 +242,6 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
                   </g>
                 )}
 
-                {/* Vector Trajectories Overlay */}
                 {showVectors && (
                   <g className="transition-opacity duration-300">
                     <line
@@ -236,7 +255,6 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
                 )}
               </svg>
 
-              {/* Tokens de Jugadores Arrastrables */}
               {Object.entries(positions).map(([key, pos]) => {
                 const isOffense = key.startsWith('j');
                 const isBall = key === 'ball';
@@ -269,7 +287,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
               <button
                 onClick={handleRunSimulation}
                 disabled={loading}
-                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-primary hover:bg-secondary text-white font-bold text-base flex items-center justify-center gap-2 shadow-md transition-all"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-primary hover:bg-secondary text-white font-bold text-base flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
               >
                 <span className={`material-symbols-outlined ${loading ? 'animate-spin' : ''}`}>
                   {loading ? 'sync' : 'bolt'}
@@ -293,25 +311,31 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
                   <circle
                     cx="60" cy="60" r="50" fill="none" stroke="#059669" strokeWidth="10"
                     strokeDasharray="314.159"
-                    strokeDashoffset={314.159 - (314.159 * telemetry.probability) / 100}
+                    strokeDashoffset={314.159 - (314.159 * (telemetry.probability || 0)) / 100}
                     strokeLinecap="round"
                     className="transition-all duration-700 ease-out"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-4xl font-bold text-on-surface">{telemetry.probability}%</span>
-                  <span className="text-xs font-semibold text-emerald-700 mt-1">xPTS: +1.82</span>
+                  <span className="text-4xl font-bold text-on-surface">
+                    {telemetry.probability != null ? `${telemetry.probability}%` : '—'}
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-700 mt-1">
+                    {telemetry.probability != null ? 'xPTS calculado' : 'Sin datos aún'}
+                  </span>
                 </div>
               </div>
 
               <div className="w-full grid grid-cols-2 gap-3 mt-6">
                 <div className="bg-surface-container-low p-3 rounded">
                   <span className="text-xs text-on-surface-variant block">Efectividad Zona</span>
-                  <span className="text-lg font-bold">{telemetry.openShot}%</span>
+                  <span className="text-lg font-bold">{telemetry.openShot != null ? `${telemetry.openShot}%` : '—'}</span>
                 </div>
                 <div className="bg-surface-container-low p-3 rounded">
                   <span className="text-xs text-on-surface-variant block">Riesgo Error</span>
-                  <span className="text-lg font-bold">19%</span>
+                  <span className="text-lg font-bold">
+                    {telemetry.probability != null ? `${100 - telemetry.probability}%` : '—'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -324,9 +348,27 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
               <div className="bg-surface-container-low p-4 rounded-lg">
                 <span className="block text-sm font-bold text-on-surface mb-1">{telemetry.recommendation}</span>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
-                  El motor predictivo identificó una cobertura defensiva tardía. La rotación proyecta una ventana limpia de tiro.
+                  {telemetry.probability != null
+                    ? 'Resultado calculado por el motor de IA a partir de las posiciones actuales.'
+                    : 'Ejecuta "SIMULAR JUGADA CON IA" para obtener una recomendación real.'}
                 </p>
               </div>
+            </div>
+
+            {/* Panel de métricas dinámicas según entityType (Franquicia/Academia/Federación) */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container">
+              <span className="text-sm font-bold text-on-surface block mb-1">{modeConfig.label}</span>
+              <p className="text-xs text-on-surface-variant mb-4">{modeConfig.focus}</p>
+              <ul className="space-y-2">
+                {modeConfig.metrics.map((m) => (
+                  <li key={m.key} className="flex items-center justify-between text-xs bg-surface-container-low p-2 rounded">
+                    <span className="text-on-surface-variant">{m.label}</span>
+                    <span className="font-bold text-on-surface">
+                      {telemetry.probability != null ? `${telemetry.probability}%` : '—'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container">
