@@ -1,9 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import { TENNIS_PLAYS, getPlayById } from './predefinedPlays';
 
 export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
   const [surface, setSurface] = useState('hard'); // 'hard', 'clay', 'grass'
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // NUEVO: jugadas predeterminadas (saques). 'custom' = posición manual.
+  const [selectedPlayId, setSelectedPlayId] = useState('custom');
+  const selectedPlay = useMemo(
+    () => getPlayById(TENNIS_PLAYS, selectedPlayId),
+    [selectedPlayId]
+  );
 
   const [matchPreset, setMatchPreset] = useState('alcaraz-sinner');
   const [playerServer, setPlayerServer] = useState('C. ALCARAZ');
@@ -49,10 +57,24 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
     setPositions(defaultPositions);
     setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, recommendation: '—', speed: '—', rpm: '—' });
     setErrorMessage('');
+    setSelectedPlayId('custom');
+  };
+
+  const handlePlayChange = (e) => {
+    const playId = e.target.value;
+    setSelectedPlayId(playId);
+    const play = getPlayById(TENNIS_PLAYS, playId);
+    if (play.positions) {
+      setPositions(play.positions);
+    }
+    setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, recommendation: '—', speed: '—', rpm: '—' });
+    setErrorMessage('');
   };
 
   const handlePointerDown = (e, key) => {
     activeTokenRef.current = key;
+    // Arrastrar una ficha invalida el preset elegido -> vuelve a "manual".
+    setSelectedPlayId('custom');
     const tokenRect = e.currentTarget.getBoundingClientRect();
     dragOffsetRef.current = {
       x: e.clientX - tokenRect.left,
@@ -184,6 +206,19 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
 
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase text-on-surface-variant">Jugada:</span>
+              <select
+                value={selectedPlayId}
+                onChange={handlePlayChange}
+                className="bg-surface-container-low text-on-surface text-xs font-bold px-3 py-1.5 rounded border border-surface-container focus:outline-none cursor-pointer"
+              >
+                {TENNIS_PLAYS.map((play) => (
+                  <option key={play.id} value={play.id}>{play.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase text-on-surface-variant">Partido:</span>
               <select
                 value={matchPreset}
@@ -217,6 +252,15 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
             </button>
           </div>
         </div>
+
+        {selectedPlay.id !== 'custom' && (
+          <div className="mb-6 p-3 bg-secondary/10 border border-secondary/30 rounded-lg flex items-start gap-2">
+            <span className="material-symbols-outlined text-secondary text-sm mt-0.5">school</span>
+            <p className="text-xs text-on-surface leading-relaxed">
+              <span className="font-bold">{selectedPlay.name}:</span> {selectedPlay.description}
+            </p>
+          </div>
+        )}
 
         {errorMessage && (
           <div className="mb-6 p-3 bg-red-100 border border-red-300 text-red-800 text-xs rounded-lg font-semibold flex items-center gap-2">
