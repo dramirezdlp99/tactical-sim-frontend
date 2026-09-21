@@ -3,27 +3,27 @@ import React, { useState, useRef } from 'react';
 export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
   const [surface, setSurface] = useState('hard'); // 'hard', 'clay', 'grass'
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Partido y Tenistas dinámicos
   const [matchPreset, setMatchPreset] = useState('alcaraz-sinner');
   const [playerServer, setPlayerServer] = useState('C. ALCARAZ');
   const [playerReceiver, setPlayerReceiver] = useState('J. SINNER');
 
   const defaultPositions = {
-    alcaraz: { x: 9, y: 58 },  // Servidor
-    sinner: { x: 92, y: 40 },   // Restador
-    ball: { x: 46, y: 55 }      // Pelota
+    alcaraz: { x: 9, y: 58 },
+    sinner: { x: 92, y: 40 },
+    ball: { x: 46, y: 55 }
   };
 
   const [positions, setPositions] = useState(defaultPositions);
 
   const [telemetry, setTelemetry] = useState({
-    holdProb: 78,
-    aceProb: 38.4,
-    shortPoint: 49.1,
-    recommendation: 'Servicio al cuerpo con trayectoria descendente a la T externa',
-    speed: '212 km/h',
-    rpm: '2,850 RPM'
+    holdProb: null,
+    aceProb: null,
+    shortPoint: null,
+    recommendation: '—',
+    speed: '—',
+    rpm: '—'
   });
 
   const courtRef = useRef(null);
@@ -47,6 +47,8 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
 
   const handleReset = () => {
     setPositions(defaultPositions);
+    setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, recommendation: '—', speed: '—', rpm: '—' });
+    setErrorMessage('');
   };
 
   const handlePointerDown = (e, key) => {
@@ -83,6 +85,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
 
   const handleRunTennisSimulation = async () => {
     setLoading(true);
+    setErrorMessage('');
 
     try {
       const token = user?.token || localStorage.getItem('token') || '';
@@ -100,37 +103,37 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
         })
       });
 
-      if (res.ok) {
-        const json = await res.json();
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.data) {
         const data = json.data;
         setTelemetry({
           holdProb: Math.round(data.success_probability * 100),
           aceProb: Math.round(data.success_probability * 45),
           shortPoint: Math.round(data.success_probability * 60),
-          recommendation: 'Drive Paralelo al Fondo de la Cancha',
-          speed: '218 km/h',
-          rpm: '2,920 RPM'
+          recommendation: data.recommended_action || 'Sin recomendación disponible',
+          speed: '—',
+          rpm: '—'
         });
       } else {
-        setTelemetry((prev) => ({
-          ...prev,
-          holdProb: Math.floor(75 + Math.random() * 15)
-        }));
+        // CAMBIO CLAVE: antes se rellenaba holdProb con un número
+        // aleatorio (75-90%) como si viniera de la IA. Ahora se muestra
+        // el error real y no se inventan datos.
+        setErrorMessage(
+          json?.message || `Error del servidor (HTTP ${res.status}) al ejecutar la simulación.`
+        );
       }
     } catch (err) {
-      setTelemetry((prev) => ({
-        ...prev,
-        holdProb: Math.floor(75 + Math.random() * 15)
-      }));
+      setErrorMessage('No se pudo conectar con el backend (puerto 9096) o con el motor de IA.');
     } finally {
       setLoading(false);
     }
   };
 
   const getSurfaceColor = () => {
-    if (surface === 'clay') return '#f5d5cc'; // Tierra Batida
-    if (surface === 'grass') return '#d4ecd5'; // Hierba Wimbledon
-    return '#dce9ff'; // Pista Dura Decoturf
+    if (surface === 'clay') return '#f5d5cc';
+    if (surface === 'grass') return '#d4ecd5';
+    return '#dce9ff';
   };
 
   return (
@@ -215,9 +218,16 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
           </div>
         </div>
 
+        {errorMessage && (
+          <div className="mb-6 p-3 bg-red-100 border border-red-300 text-red-800 text-xs rounded-lg font-semibold flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">error</span>
+            {errorMessage}
+          </div>
+        )}
+
         {/* Workspace Principal */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
+
           {/* Cancha de Tenis ATP (7 columnas) */}
           <div className="lg:col-span-7 bg-white p-4 rounded-lg shadow-sm border border-surface-container">
             <div className="flex items-center justify-between mb-3 text-xs font-semibold">
@@ -236,7 +246,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
               <svg className="w-full h-full absolute inset-0" viewBox="0 0 1000 520">
                 <rect x="70" y="50" width="860" height="420" rx="4" fill={getSurfaceColor()} />
                 <rect x="100" y="70" width="800" height="380" fill="none" stroke="#0b1c30" strokeWidth="2.5" />
-                
+
                 <line x1="100" y1="115" x2="900" y2="115" stroke="#0b1c30" strokeWidth="1.8" />
                 <line x1="100" y1="405" x2="900" y2="405" stroke="#0b1c30" strokeWidth="1.8" />
                 <line x1="280" y1="115" x2="280" y2="405" stroke="#0b1c30" strokeWidth="2" />
@@ -282,7 +292,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
               <button
                 onClick={handleRunTennisSimulation}
                 disabled={loading}
-                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
               >
                 <span className={`material-symbols-outlined ${loading ? 'animate-spin' : ''}`}>
                   {loading ? 'sync' : 'sports_score'}
@@ -303,13 +313,15 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
                   <circle
                     cx="60" cy="60" r="50" fill="none" stroke="#059669" strokeWidth="12"
                     strokeDasharray="314"
-                    strokeDashoffset={314 - (314 * telemetry.holdProb) / 100}
+                    strokeDashoffset={314 - (314 * (telemetry.holdProb || 0)) / 100}
                     strokeLinecap="round"
                     className="transition-all duration-700 ease-out"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-bold text-on-surface">{telemetry.holdProb}%</span>
+                  <span className="text-3xl font-bold text-on-surface">
+                    {telemetry.holdProb != null ? `${telemetry.holdProb}%` : '—'}
+                  </span>
                   <span className="text-xs uppercase font-bold text-emerald-700">HOLD PROB</span>
                 </div>
               </div>
@@ -318,20 +330,20 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
                     <span>Ace / Saque no devuelto</span>
-                    <span>{telemetry.aceProb}%</span>
+                    <span>{telemetry.aceProb != null ? `${telemetry.aceProb}%` : '—'}</span>
                   </div>
                   <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
-                    <div className="h-full bg-secondary rounded-full" style={{ width: `${telemetry.aceProb}%` }}></div>
+                    <div className="h-full bg-secondary rounded-full" style={{ width: `${telemetry.aceProb || 0}%` }}></div>
                   </div>
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
                     <span>Punto Corto (&lt; 4 golpes)</span>
-                    <span className="text-emerald-700">{telemetry.shortPoint}%</span>
+                    <span className="text-emerald-700">{telemetry.shortPoint != null ? `${telemetry.shortPoint}%` : '—'}</span>
                   </div>
                   <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${telemetry.shortPoint}%` }}></div>
+                    <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${telemetry.shortPoint || 0}%` }}></div>
                   </div>
                 </div>
               </div>
@@ -344,7 +356,9 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
               <div className="bg-surface-container-low p-3 rounded-lg">
                 <span className="block text-sm font-bold text-on-surface mb-1">{telemetry.recommendation}</span>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
-                  {playerReceiver} muestra un retroceso tras la línea de fondo ante el punto de quiebre. Su índice de reacción al bote resulta en devoluciones cortas.
+                  {telemetry.holdProb != null
+                    ? `Resultado calculado por el motor de IA para ${playerServer} vs ${playerReceiver}.`
+                    : 'Ejecuta la simulación para obtener una recomendación real del motor de IA.'}
                 </p>
               </div>
             </div>
