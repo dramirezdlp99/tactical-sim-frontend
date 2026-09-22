@@ -3,10 +3,13 @@ import { AuthScreen } from './components/AuthScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { TacticalSimulator } from './components/TacticalSimulator';
 import { TennisSimulator } from './components/TennisSimulator';
+import { SimulationHistory } from './components/SimulationHistory';
 
 export function App() {
   const [user, setUser] = useState(null);
-  const [currentView, setCurrentView] = useState('login'); // 'login', 'register', 'bball', 'tennis'
+  const [currentView, setCurrentView] = useState('login'); // 'login', 'register', 'bball', 'tennis', 'history'
+  // Recuerda desde qué simulador se entró al historial, para volver al correcto con "Volver al Simulador"
+  const [previousSimulatorView, setPreviousSimulatorView] = useState('bball');
 
   // Verificar si ya existe un token en localStorage al recargar la página
   useEffect(() => {
@@ -35,6 +38,18 @@ export function App() {
     setCurrentView('login');
   };
 
+  // El Analista (o cualquier rol) pulsa "Ver Historial" desde cualquiera de los dos simuladores
+  const handleViewHistory = () => {
+    if (currentView === 'bball' || currentView === 'tennis') {
+      setPreviousSimulatorView(currentView);
+    }
+    setCurrentView('history');
+  };
+
+  const handleBackToSimulator = () => {
+    setCurrentView(previousSimulatorView);
+  };
+
   return (
     <div className="w-full min-h-screen">
       {!user ? (
@@ -49,17 +64,25 @@ export function App() {
             onSwitchToLogin={() => setCurrentView('login')}
           />
         )
+      ) : currentView === 'history' ? (
+        <SimulationHistory
+          user={user}
+          onLogout={handleLogout}
+          onBackToSimulator={handleBackToSimulator}
+        />
       ) : currentView === 'tennis' ? (
         <TennisSimulator
           user={user}
           onLogout={handleLogout}
           onSwitchToBasketball={() => setCurrentView('bball')}
+          onViewHistory={handleViewHistory}
         />
       ) : (
         <TacticalSimulator
           user={user}
           onLogout={handleLogout}
           onSwitchToTennis={() => setCurrentView('tennis')}
+          onViewHistory={handleViewHistory}
         />
       )}
     </div>
