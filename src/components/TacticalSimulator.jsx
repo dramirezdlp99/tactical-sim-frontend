@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { getModeConfig } from './entityModes';
 import { BASKETBALL_PLAYS, getPlayById } from './predefinedPlays';
 
-export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
+export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHistory }) => {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -22,10 +22,18 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
 
   const [telemetry, setTelemetry] = useState({
     probability: null,
-    openShot: null,
+    zoneEfficiency: null,
+    riskError: null,
     recommendation: '—',
+    tacticalNote: '',
     thread: '—'
   });
+
+  // NUEVO: guarda la respuesta cruda (0-1, no redondeada a %) del último
+  // resultado, para poder mandarla tal cual al historial sin perder precisión.
+  const [lastResult, setLastResult] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(''); // '', 'saving', 'saved', 'error'
+  const isCoach = user?.role === 'ROLE_COACH' || user?.role === 'ROLE_ADMIN';
 
   // Coordenadas para Baloncesto (5v5)
   const [positions, setPositions] = useState({
@@ -67,7 +75,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
     if (play.positions) {
       setPositions(play.positions);
     }
-    setTelemetry({ probability: null, openShot: null, recommendation: '—', thread: '—' });
+    setTelemetry({ probability: null, zoneEfficiency: null, riskError: null, recommendation: '—', tacticalNote: '', thread: '—' });
     setErrorMessage('');
   };
 
@@ -133,12 +141,21 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
 
       if (res.ok && json?.data) {
         const data = json.data;
+        // CAMBIO: antes "Efectividad Zona" y "Riesgo Error" se inventaban
+        // multiplicando success_probability por un ratio fijo (75% y
+        // 100-probabilidad). Ahora vienen calculados de verdad por el
+        // motor de IA (geometria real: distancia al aro, presión
+        // defensiva, apertura de líneas de pase).
         setTelemetry({
           probability: Math.round(data.success_probability * 100),
-          openShot: Math.round(data.success_probability * 75),
+          zoneEfficiency: Math.round((data.secondary_efficiency ?? 0) * 100),
+          riskError: Math.round((data.risk_index ?? 0) * 100),
           recommendation: data.recommended_action || 'Sin recomendación disponible',
+          tacticalNote: data.tactical_note || '',
           thread: data.execution_thread || 'WorkerThread-Async'
         });
+        setLastResult(data);
+        setSaveStatus('');
       } else {
         // CAMBIO CLAVE: antes, si la petición fallaba, se rellenaba con
         // telemetría inventada (88%, 66%, etc.) como si la IA hubiera
@@ -162,9 +179,40 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
       d2: { x: 29, y: 29 }, d3: { x: 75, y: 38 }, d4: { x: 51, y: 42 },
       d5: { x: 51, y: 24 }, ball: { x: 45, y: 66 }
     });
-    setTelemetry({ probability: null, openShot: null, recommendation: '—', thread: '—' });
+    setTelemetry({ probability: null, zoneEfficiency: null, riskError: null, recommendation: '—', tacticalNote: '', thread: '—' });
     setErrorMessage('');
     setSelectedPlayId('custom');
+    setLastResult(null);
+    setSaveStatus('');
+  };
+
+  // NUEVO: guarda la jugada actual (posiciones + resultado de la IA) en el
+  // historial del backend. Solo visible para el rol Entrenador.
+  const handleSavePlay = async () => {
+    if (!lastResult) return;
+    setSaveStatus('saving');
+    try {
+      const res = await fetch('http://localhost:9096/api/v1/simulation/history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token || ''}`
+        },
+        body: JSON.stringify({
+          sport: 'BASKETBALL',
+          playName: selectedPlay.id !== 'custom' ? selectedPlay.name : 'Jugada Personalizada',
+          positionsJson: JSON.stringify(positions),
+          successProbability: lastResult.success_probability,
+          secondaryEfficiency: lastResult.secondary_efficiency,
+          riskIndex: lastResult.risk_index,
+          recommendedAction: lastResult.recommended_action,
+          tacticalNote: lastResult.tactical_note
+        })
+      });
+      setSaveStatus(res.ok ? 'saved' : 'error');
+    } catch (err) {
+      setSaveStatus('error');
+    }
   };
 
   return (
@@ -189,6 +237,16 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* NUEVO: solo el Analista ve el acceso al historial/reportes */}
+          {user?.role === 'ROLE_ANALYST' && onViewHistory && (
+            <button
+              onClick={onViewHistory}
+              className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">analytics</span>
+              Ver Historial
+            </button>
+          )}
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
               {user?.email?.charAt(0).toUpperCase() || 'A'}
@@ -332,7 +390,22 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
               })}
             </div>
 
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2">
+              {/* NUEVO: solo el Entrenador puede guardar jugadas en el historial */}
+              {isCoach && (
+                <button
+                  onClick={handleSavePlay}
+                  disabled={!lastResult || saveStatus === 'saving'}
+                  className="px-5 py-3 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-sm flex items-center justify-center gap-2 border border-surface-container transition-all disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    {saveStatus === 'saved' ? 'check_circle' : 'save'}
+                  </span>
+                  <span>
+                    {saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'saved' ? 'Guardada' : 'Guardar Jugada'}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={handleRunSimulation}
                 disabled={loading}
@@ -378,12 +451,12 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
               <div className="w-full grid grid-cols-2 gap-3 mt-6">
                 <div className="bg-surface-container-low p-3 rounded">
                   <span className="text-xs text-on-surface-variant block">Efectividad Zona</span>
-                  <span className="text-lg font-bold">{telemetry.openShot != null ? `${telemetry.openShot}%` : '—'}</span>
+                  <span className="text-lg font-bold">{telemetry.zoneEfficiency != null ? `${telemetry.zoneEfficiency}%` : '—'}</span>
                 </div>
                 <div className="bg-surface-container-low p-3 rounded">
                   <span className="text-xs text-on-surface-variant block">Riesgo Error</span>
                   <span className="text-lg font-bold">
-                    {telemetry.probability != null ? `${100 - telemetry.probability}%` : '—'}
+                    {telemetry.riskError != null ? `${telemetry.riskError}%` : '—'}
                   </span>
                 </div>
               </div>
@@ -397,9 +470,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
               <div className="bg-surface-container-low p-4 rounded-lg">
                 <span className="block text-sm font-bold text-on-surface mb-1">{telemetry.recommendation}</span>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
-                  {telemetry.probability != null
-                    ? 'Resultado calculado por el motor de IA a partir de las posiciones actuales.'
-                    : 'Ejecuta "SIMULAR JUGADA CON IA" para obtener una recomendación real.'}
+                  {telemetry.tacticalNote || 'Ejecuta "SIMULAR JUGADA CON IA" para obtener una recomendación real.'}
                 </p>
               </div>
             </div>
@@ -409,14 +480,25 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis }) => {
               <span className="text-sm font-bold text-on-surface block mb-1">{modeConfig.label}</span>
               <p className="text-xs text-on-surface-variant mb-4">{modeConfig.focus}</p>
               <ul className="space-y-2">
-                {modeConfig.metrics.map((m) => (
-                  <li key={m.key} className="flex items-center justify-between text-xs bg-surface-container-low p-2 rounded">
-                    <span className="text-on-surface-variant">{m.label}</span>
-                    <span className="font-bold text-on-surface">
-                      {telemetry.probability != null ? `${telemetry.probability}%` : '—'}
-                    </span>
-                  </li>
-                ))}
+                {modeConfig.metrics.map((m, idx) => {
+                  // CAMBIO: antes las 3 filas mostraban el mismo número
+                  // (success_probability repetido). Ahora cada fila usa un
+                  // dato real y distinto que devuelve el motor de IA.
+                  const values = [
+                    telemetry.probability,
+                    telemetry.zoneEfficiency,
+                    telemetry.riskError != null ? 100 - telemetry.riskError : null,
+                  ];
+                  const value = values[idx];
+                  return (
+                    <li key={m.key} className="flex items-center justify-between text-xs bg-surface-container-low p-2 rounded">
+                      <span className="text-on-surface-variant">{m.label}</span>
+                      <span className="font-bold text-on-surface">
+                        {value != null ? `${value}%` : '—'}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 
