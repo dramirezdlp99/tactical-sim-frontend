@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { TENNIS_PLAYS, getPlayById } from './predefinedPlays';
 
-export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
+export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHistory }) => {
   const [surface, setSurface] = useState('hard'); // 'hard', 'clay', 'grass'
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -25,11 +25,17 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
 
   const [positions, setPositions] = useState(defaultPositions);
 
+  const [lastResult, setLastResult] = useState(null);
+  const [saveStatus, setSaveStatus] = useState('');
+  const isCoach = user?.role === 'ROLE_COACH' || user?.role === 'ROLE_ADMIN';
+
   const [telemetry, setTelemetry] = useState({
     holdProb: null,
     aceProb: null,
     shortPoint: null,
+    doubleFaultRisk: null,
     recommendation: '—',
+    tacticalNote: '',
     speed: '—',
     rpm: '—'
   });
@@ -55,7 +61,9 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
 
   const handleReset = () => {
     setPositions(defaultPositions);
-    setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, recommendation: '—', speed: '—', rpm: '—' });
+    setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, doubleFaultRisk: null, recommendation: '—', tacticalNote: '', speed: '—', rpm: '—' });
+    setLastResult(null);
+    setSaveStatus('');
     setErrorMessage('');
     setSelectedPlayId('custom');
   };
@@ -67,7 +75,9 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
     if (play.positions) {
       setPositions(play.positions);
     }
-    setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, recommendation: '—', speed: '—', rpm: '—' });
+    setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, doubleFaultRisk: null, recommendation: '—', tacticalNote: '', speed: '—', rpm: '—' });
+    setLastResult(null);
+    setSaveStatus('');
     setErrorMessage('');
   };
 
@@ -129,14 +139,22 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
 
       if (res.ok && json?.data) {
         const data = json.data;
+        // CAMBIO: antes aceProb y shortPoint eran success_probability
+        // multiplicado por ratios fijos (0.45 y 0.60) -- ni siquiera eran
+        // datos reales distintos. Ahora vienen de campos calculados de
+        // verdad por el motor de IA a partir de la geometría del saque.
         setTelemetry({
           holdProb: Math.round(data.success_probability * 100),
-          aceProb: Math.round(data.success_probability * 45),
-          shortPoint: Math.round(data.success_probability * 60),
+          aceProb: Math.round(data.success_probability * 100),
+          shortPoint: Math.round((data.secondary_efficiency ?? 0) * 100),
+          doubleFaultRisk: Math.round((data.risk_index ?? 0) * 100),
           recommendation: data.recommended_action || 'Sin recomendación disponible',
-          speed: '—',
-          rpm: '—'
+          tacticalNote: data.tactical_note || '',
+          speed: data.ball_speed_kmh != null ? `${data.ball_speed_kmh} km/h` : '—',
+          rpm: data.spin_rate_rpm != null ? `${data.spin_rate_rpm} RPM` : '—'
         });
+        setLastResult(data);
+        setSaveStatus('');
       } else {
         // CAMBIO CLAVE: antes se rellenaba holdProb con un número
         // aleatorio (75-90%) como si viniera de la IA. Ahora se muestra
@@ -149,6 +167,34 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
       setErrorMessage('No se pudo conectar con el backend (puerto 9096) o con el motor de IA.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePlay = async () => {
+    if (!lastResult) return;
+    setSaveStatus('saving');
+    try {
+      const token = user?.token || localStorage.getItem('token') || '';
+      const res = await fetch('http://localhost:9096/api/v1/simulation/history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          sport: 'TENNIS',
+          playName: selectedPlay.id !== 'custom' ? selectedPlay.name : 'Saque Personalizado',
+          positionsJson: JSON.stringify(positions),
+          successProbability: lastResult.success_probability,
+          secondaryEfficiency: lastResult.secondary_efficiency,
+          riskIndex: lastResult.risk_index,
+          recommendedAction: lastResult.recommended_action,
+          tacticalNote: lastResult.tactical_note
+        })
+      });
+      setSaveStatus(res.ok ? 'saved' : 'error');
+    } catch (err) {
+      setSaveStatus('error');
     }
   };
 
@@ -177,6 +223,15 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
         </div>
 
         <div className="flex items-center gap-4">
+          {user?.role === 'ROLE_ANALYST' && onViewHistory && (
+            <button
+              onClick={onViewHistory}
+              className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">analytics</span>
+              Ver Historial
+            </button>
+          )}
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
               {user?.email?.charAt(0).toUpperCase() || 'A'}
@@ -332,7 +387,21 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
               })}
             </div>
 
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2">
+              {isCoach && (
+                <button
+                  onClick={handleSavePlay}
+                  disabled={!lastResult || saveStatus === 'saving'}
+                  className="px-5 py-3 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-sm flex items-center justify-center gap-2 border border-surface-container transition-all disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    {saveStatus === 'saved' ? 'check_circle' : 'save'}
+                  </span>
+                  <span>
+                    {saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'saved' ? 'Guardada' : 'Guardar Jugada'}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={handleRunTennisSimulation}
                 disabled={loading}
@@ -383,11 +452,21 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span>Punto Corto (&lt; 4 golpes)</span>
+                    <span>Limpieza del Ángulo de Saque</span>
                     <span className="text-emerald-700">{telemetry.shortPoint != null ? `${telemetry.shortPoint}%` : '—'}</span>
                   </div>
                   <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
                     <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${telemetry.shortPoint || 0}%` }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold mb-1">
+                    <span>Riesgo de Doble Falta</span>
+                    <span className="text-error">{telemetry.doubleFaultRisk != null ? `${telemetry.doubleFaultRisk}%` : '—'}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+                    <div className="h-full bg-error rounded-full" style={{ width: `${telemetry.doubleFaultRisk || 0}%` }}></div>
                   </div>
                 </div>
               </div>
@@ -400,9 +479,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball }) => {
               <div className="bg-surface-container-low p-3 rounded-lg">
                 <span className="block text-sm font-bold text-on-surface mb-1">{telemetry.recommendation}</span>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
-                  {telemetry.holdProb != null
-                    ? `Resultado calculado por el motor de IA para ${playerServer} vs ${playerReceiver}.`
-                    : 'Ejecuta la simulación para obtener una recomendación real del motor de IA.'}
+                  {telemetry.tacticalNote || 'Ejecuta la simulación para obtener una recomendación real del motor de IA.'}
                 </p>
               </div>
             </div>
