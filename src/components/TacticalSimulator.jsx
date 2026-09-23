@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { getModeConfig } from './entityModes';
 import { BASKETBALL_PLAYS, getPlayById } from './predefinedPlays';
+import { BACKEND_URL } from './apiConfig';
 
 export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHistory }) => {
   const [showHeatmap, setShowHeatmap] = useState(true);
@@ -128,7 +129,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
         ball_position: { player_id: 'BALL', x: positions.ball.x, y: positions.ball.y }
       };
 
-      const res = await fetch('http://localhost:9096/api/v1/simulation/run', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/simulation/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,7 +193,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
     if (!lastResult) return;
     setSaveStatus('saving');
     try {
-      const res = await fetch('http://localhost:9096/api/v1/simulation/history', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/simulation/history`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
