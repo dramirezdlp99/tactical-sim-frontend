@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BACKEND_URL } from './apiConfig';
 
 export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
   // CAMBIO CLAVE: el login ahora es de dos pasos reales.
@@ -50,7 +51,7 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
     setErrorMessage('');
 
     try {
-      const res = await fetch('http://localhost:9096/api/v1/auth/login', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -93,7 +94,7 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
     setErrorMessage('');
 
     try {
-      const res = await fetch('http://localhost:9096/api/v1/auth/verify-2fa', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/auth/verify-2fa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tempToken, code })
