@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { TENNIS_PLAYS, getPlayById } from './predefinedPlays';
+import { BACKEND_URL } from './apiConfig';
 
 export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHistory }) => {
   const [surface, setSurface] = useState('hard'); // 'hard', 'clay', 'grass'
@@ -121,7 +122,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
 
     try {
       const token = user?.token || localStorage.getItem('token') || '';
-      const res = await fetch('http://localhost:9096/api/v1/simulation/run', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/simulation/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +176,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
     setSaveStatus('saving');
     try {
       const token = user?.token || localStorage.getItem('token') || '';
-      const res = await fetch('http://localhost:9096/api/v1/simulation/history', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/simulation/history`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
