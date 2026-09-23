@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BACKEND_URL } from './apiConfig';
 
 /** Máscara de teléfono para Colombia: +57 300 123 4567 */
 function formatColombianPhone(raw) {
@@ -65,7 +66,7 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:9096/api/v1/auth/register', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
