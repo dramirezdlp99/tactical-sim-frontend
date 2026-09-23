@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-
-const BACKEND_URL = 'http://localhost:9096';
+import { BACKEND_URL } from './apiConfig';
 
 /**
  * SimulationHistory
