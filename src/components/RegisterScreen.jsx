@@ -88,8 +88,14 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
         onRegisterSuccess({
           email,
           token: json.data.accessToken,
-          // Se prioriza lo que confirma el backend; si por lo que sea no
-          // viene en la respuesta, se usa lo que el usuario eligió.
+          // CAMBIO CLAVE: antes NO se enviaba el rol aqui, entonces
+          // user.role quedaba "undefined" justo despues de registrarse y
+          // el boton "Ver Historial" (que depende de
+          // user?.role === 'ROLE_ANALYST') nunca podia aparecer, sin
+          // importar que rol hubieras elegido en el formulario. Se
+          // prioriza lo que confirma el backend; si por lo que sea no
+          // viene en la respuesta, se usa lo que el usuario eligio.
+          role: json.data.role || (role === 'coach' ? 'ROLE_COACH' : 'ROLE_ANALYST'),
           entityType: json.data.entityType || orgType.toUpperCase()
         });
       } else {
