@@ -170,6 +170,39 @@ export const RegisterScreen = ({ onRegisterSuccess, onSwitchToLogin }) => {
             </div>
           </div>
 
+          {/* Selector 2: Rol / Perfil Operativo */}
+          <div>
+            <label className="block text-xs font-bold uppercase text-on-surface-variant mb-2">2. Perfil Operativo *</label>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-surface-container-low rounded-lg">
+              <button
+                type="button"
+                onClick={() => setRole('coach')}
+                className={`flex items-start gap-2.5 p-2.5 rounded-md text-left transition-all ${
+                  role === 'coach' ? 'bg-white text-on-surface shadow-sm font-semibold border border-secondary' : 'text-on-surface-variant'
+                }`}
+              >
+                <span className="material-symbols-outlined text-secondary">sports</span>
+                <div>
+                  <span className="block text-sm font-semibold">Entrenador Principal</span>
+                  <span className="block text-xs text-on-surface-variant">Corre simulaciones y guarda jugadas</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('analyst')}
+                className={`flex items-start gap-2.5 p-2.5 rounded-md text-left transition-all ${
+                  role === 'analyst' ? 'bg-white text-on-surface shadow-sm font-semibold border border-secondary' : 'text-on-surface-variant'
+                }`}
+              >
+                <span className="material-symbols-outlined text-secondary">query_stats</span>
+                <div>
+                  <span className="block text-sm font-semibold">Analista Táctico</span>
+                  <span className="block text-xs text-on-surface-variant">Consulta historial y exporta reportes</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Formulario en 2 Columnas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
