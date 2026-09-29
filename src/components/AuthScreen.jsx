@@ -7,7 +7,6 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
   // 'OTP'         -> POST /verify-2fa (valida el código, entrega el JWT)
   const [step, setStep] = useState('CREDENTIALS');
 
-  const [role, setRole] = useState('coach');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -107,10 +106,13 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
         localStorage.setItem('token', token);
         localStorage.setItem('email', email);
 
+        // El rol siempre lo determina el backend (lo que quedo guardado al
+        // registrarse), nunca una eleccion hecha aqui en el login -- por
+        // eso ya no hay selector de rol en esta pantalla.
         onLoginSuccess({
           email,
           token,
-          role: json.data.role || (role === 'coach' ? 'ROLE_COACH' : 'ROLE_ANALYST'),
+          role: json.data.role,
           entityType: json.data.entityType || null
         });
       } else {
@@ -167,39 +169,6 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
 
         {step === 'CREDENTIALS' && (
           <>
-            {/* Selector de Rol */}
-            <div className="mb-6">
-              <label className="block text-xs font-bold uppercase text-on-surface-variant mb-2">Perfil Operativo</label>
-              <div className="grid grid-cols-2 gap-2 p-1 bg-surface-container-low rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setRole('coach')}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-md text-left transition-all ${
-                    role === 'coach' ? 'bg-surface-container-lowest text-on-surface shadow-sm font-semibold' : 'text-on-surface-variant'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-secondary">sports</span>
-                  <div>
-                    <span className="block text-sm font-semibold">Entrenador Principal</span>
-                    <span className="block text-xs text-on-surface-variant">Control de juego en vivo</span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('analyst')}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-md text-left transition-all ${
-                    role === 'analyst' ? 'bg-surface-container-lowest text-on-surface shadow-sm font-semibold' : 'text-on-surface-variant'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-secondary">query_stats</span>
-                  <div>
-                    <span className="block text-sm font-semibold">Analista Táctico</span>
-                    <span className="block text-xs text-on-surface-variant">Modelos predictivos</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-
             <form onSubmit={handleCredentialsSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Correo Corporativo</label>
