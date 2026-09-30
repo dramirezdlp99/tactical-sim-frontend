@@ -1,7 +1,10 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { getModeConfig } from './entityModes';
 import { BASKETBALL_PLAYS, getPlayById } from './predefinedPlays';
 import { BACKEND_URL } from './apiConfig';
+import { useOnlineStatus } from './useOnlineStatus';
+import { saveLocalBoard, getLocalBoards, deleteLocalBoard } from './offlineBoards';
+import { OfflineBanner } from './OfflineBanner';
 
 export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHistory }) => {
   const [showHeatmap, setShowHeatmap] = useState(true);
@@ -35,6 +38,27 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
   const [lastResult, setLastResult] = useState(null);
   const [saveStatus, setSaveStatus] = useState(''); // '', 'saving', 'saved', 'error'
   const isCoach = user?.role === 'ROLE_COACH' || user?.role === 'ROLE_ADMIN';
+
+  // NUEVO (Modo Campo / Offline): detecta conexión real del navegador y
+  // permite guardar/cargar pizarras en IndexedDB sin depender del backend.
+  const isOnline = useOnlineStatus();
+  const [localBoards, setLocalBoards] = useState([]);
+  const [localBoardName, setLocalBoardName] = useState('');
+  const [localSaveStatus, setLocalSaveStatus] = useState(''); // '', 'saving', 'saved', 'error'
+
+  const refreshLocalBoards = useCallback(async () => {
+    try {
+      const boards = await getLocalBoards('BASKETBALL');
+      setLocalBoards(boards);
+    } catch (err) {
+      // IndexedDB no disponible en este navegador: el Modo Campo local
+      // simplemente no se ofrece, pero el resto de la app sigue igual.
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshLocalBoards();
+  }, [refreshLocalBoards]);
 
   // Coordenadas para Baloncesto (5v5)
   const [positions, setPositions] = useState({
@@ -216,6 +240,43 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
     }
   };
 
+  // NUEVO: guarda la pizarra actual (posiciones + nota) en IndexedDB, sin
+  // tocar el backend. Funciona con o sin conexión, y con cualquier rol.
+  const handleSaveLocalBoard = async () => {
+    setLocalSaveStatus('saving');
+    try {
+      await saveLocalBoard({
+        sport: 'BASKETBALL',
+        name: localBoardName,
+        positions,
+        note: selectedPlay.id !== 'custom' ? selectedPlay.name : ''
+      });
+      setLocalBoardName('');
+      setLocalSaveStatus('saved');
+      await refreshLocalBoards();
+    } catch (err) {
+      setLocalSaveStatus('error');
+    }
+  };
+
+  const handleLoadLocalBoard = (board) => {
+    setPositions(board.positions);
+    setSelectedPlayId('custom');
+    setTelemetry({ probability: null, zoneEfficiency: null, riskError: null, recommendation: '—', tacticalNote: '', thread: '—' });
+    setErrorMessage('');
+    setLastResult(null);
+    setSaveStatus('');
+  };
+
+  const handleDeleteLocalBoard = async (id) => {
+    try {
+      await deleteLocalBoard(id);
+      await refreshLocalBoards();
+    } catch (err) {
+      // si falla el borrado, la pizarra simplemente sigue apareciendo en la lista
+    }
+  };
+
   return (
     <div className="bg-background min-h-screen text-on-surface">
       {/* Header Superior */}
@@ -307,6 +368,8 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
           </div>
         )}
 
+        {!isOnline && <OfflineBanner />}
+
         {errorMessage && (
           <div className="mb-6 p-3 bg-red-100 border border-red-300 text-red-800 text-xs rounded-lg font-semibold flex items-center gap-2">
             <span className="material-symbols-outlined text-sm">error</span>
@@ -396,26 +459,30 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
               {isCoach && (
                 <button
                   onClick={handleSavePlay}
-                  disabled={!lastResult || saveStatus === 'saving'}
+                  disabled={!lastResult || saveStatus === 'saving' || !isOnline}
+                  title={!isOnline ? 'Requiere conexión: se reactiva automáticamente al volver la señal' : undefined}
                   className="px-5 py-3 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-sm flex items-center justify-center gap-2 border border-surface-container transition-all disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined text-sm">
                     {saveStatus === 'saved' ? 'check_circle' : 'save'}
                   </span>
                   <span>
-                    {saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'saved' ? 'Guardada' : 'Guardar Jugada'}
+                    {saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'saved' ? 'Guardada' : 'Guardar en Historial del Equipo'}
                   </span>
                 </button>
               )}
               <button
                 onClick={handleRunSimulation}
-                disabled={loading}
+                disabled={loading || !isOnline}
+                title={!isOnline ? 'La simulación con IA requiere conexión al backend' : undefined}
                 className="w-full sm:w-auto px-6 py-3 rounded-lg bg-primary hover:bg-secondary text-white font-bold text-base flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
               >
                 <span className={`material-symbols-outlined ${loading ? 'animate-spin' : ''}`}>
-                  {loading ? 'sync' : 'bolt'}
+                  {loading ? 'sync' : !isOnline ? 'wifi_off' : 'bolt'}
                 </span>
-                <span>{loading ? 'PROCESANDO CON IA...' : 'SIMULAR JUGADA CON IA'}</span>
+                <span>
+                  {loading ? 'PROCESANDO CON IA...' : !isOnline ? 'SIN CONEXIÓN' : 'SIMULAR JUGADA CON IA'}
+                </span>
               </button>
             </div>
           </div>
@@ -515,6 +582,68 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
                   <input type="checkbox" checked={showVectors} onChange={(e) => setShowVectors(e.target.checked)} className="w-4 h-4 text-primary" />
                 </label>
               </div>
+            </div>
+
+            {/* NUEVO: Modo Campo / Offline (Caso de Estudio 2, sección 2.2).
+                Pizarras guardadas en IndexedDB del navegador: funcionan sin
+                conexión, para consultar/editar en camerinos o campos sin red. */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-bold text-on-surface">Pizarras Locales (Modo Campo)</span>
+                <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
+                  {isOnline ? 'En línea' : 'Sin conexión'}
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant mb-3">
+                Guarda la pizarra actual en este dispositivo (funciona sin
+                internet) para consultarla o editarla luego en camerinos o
+                campos de entrenamiento sin cobertura.
+              </p>
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={localBoardName}
+                  onChange={(e) => setLocalBoardName(e.target.value)}
+                  placeholder="Nombre de la pizarra"
+                  className="flex-1 min-w-0 bg-surface-container-low text-on-surface text-xs px-3 py-2 rounded border border-surface-container focus:outline-none"
+                />
+                <button
+                  onClick={handleSaveLocalBoard}
+                  disabled={localSaveStatus === 'saving'}
+                  className="shrink-0 px-3 py-2 rounded bg-surface-container-low hover:bg-surface-container text-xs font-bold uppercase flex items-center gap-1 transition-colors disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    {localSaveStatus === 'saved' ? 'check_circle' : 'save'}
+                  </span>
+                </button>
+              </div>
+
+              {localBoards.length === 0 ? (
+                <p className="text-xs text-on-surface-variant italic">
+                  Aún no hay pizarras guardadas en este dispositivo.
+                </p>
+              ) : (
+                <ul className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {localBoards.map((b) => (
+                    <li key={b.id} className="flex items-center justify-between bg-surface-container-low p-2 rounded text-xs">
+                      <div className="truncate pr-2">
+                        <span className="font-semibold block truncate">{b.name}</span>
+                        <span className="text-on-surface-variant">
+                          {new Date(b.savedAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => handleLoadLocalBoard(b)} className="p-1 rounded hover:bg-surface-container" title="Cargar en la cancha">
+                          <span className="material-symbols-outlined text-sm">upload</span>
+                        </button>
+                        <button onClick={() => handleDeleteLocalBoard(b.id)} className="p-1 rounded hover:bg-red-50 text-error" title="Eliminar">
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
           </div>
