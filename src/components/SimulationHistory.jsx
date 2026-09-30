@@ -160,6 +160,7 @@ export const SimulationHistory = ({ user, onLogout, onBackToSimulator }) => {
                 <tr className="border-b border-surface-container text-left text-xs uppercase text-on-surface-variant">
                   <th className="p-3 w-10"></th>
                   <th className="p-3">Fecha</th>
+                  <th className="p-3">Guardado por</th>
                   <th className="p-3">Deporte</th>
                   <th className="p-3">Jugada</th>
                   <th className="p-3">Probabilidad</th>
@@ -180,6 +181,7 @@ export const SimulationHistory = ({ user, onLogout, onBackToSimulator }) => {
                       />
                     </td>
                     <td className="p-3 font-mono text-xs">{formatDate(r.createdAt)}</td>
+                    <td className="p-3 text-xs text-on-surface-variant">{r.savedByEmail || '—'}</td>
                     <td className="p-3">
                       <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-surface-container-low">
                         {r.sport === 'BASKETBALL' ? 'Baloncesto' : 'Tenis'}
