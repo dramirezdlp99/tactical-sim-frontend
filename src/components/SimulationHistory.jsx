@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BACKEND_URL } from './apiConfig';
+import { Icon } from './ui/Icon';
+import { TopBar, Notice } from './ui/Shell';
+import { humanizeAction } from './ui/format';
 
 /**
  * SimulationHistory
@@ -32,7 +35,7 @@ export const SimulationHistory = ({ user, onLogout, onBackToSimulator }) => {
         setErrorMessage(json?.message || 'No se pudo cargar el historial.');
       }
     } catch (err) {
-      setErrorMessage('No se pudo conectar con el backend (puerto 9096).');
+      setErrorMessage('No se pudo conectar con el backend.');
     } finally {
       setLoading(false);
     }
@@ -86,112 +89,66 @@ export const SimulationHistory = ({ user, onLogout, onBackToSimulator }) => {
 
   const pct = (value) => (value != null ? `${Math.round(value * 100)}%` : '—');
 
+  const bar = (value, color) => (
+    <div className="ta-pbar">
+      <b>{pct(value)}</b>
+      <i style={{ '--w': `${Math.round((value || 0) * 100)}%`, '--c': color }} />
+    </div>
+  );
+
   return (
-    <div className="bg-background min-h-screen text-on-surface">
-      <header className="fixed top-0 left-0 right-0 h-16 z-50 bg-white/95 backdrop-blur-md border-b border-surface-container px-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-xl tracking-tight text-on-surface">TACTIC<span className="text-secondary">AI</span></span>
-          <span className="text-xs uppercase text-on-surface-variant font-semibold">Historial de Simulaciones</span>
-          <span className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold uppercase px-2.5 py-1 rounded-full bg-secondary/10 text-secondary">
-            Modo Analista
-          </span>
-        </div>
+    <div className="ta-app" data-sport="BASKETBALL">
+      <TopBar user={user} onLogout={onLogout} onBack={onBackToSimulator} modeLabel="Modo analista" />
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBackToSimulator}
-            className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface transition-colors"
-          >
-            <span className="material-symbols-outlined text-sm">arrow_back</span>
-            Volver al Simulador
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
-              {user?.email?.charAt(0).toUpperCase() || 'A'}
-            </div>
-            <span className="text-sm font-semibold hidden md:inline">{user?.email || 'Analista Táctico'}</span>
-          </div>
-          <button onClick={onLogout} className="p-1.5 rounded hover:bg-red-50 text-on-surface-variant hover:text-error transition-colors">
-            <span className="material-symbols-outlined text-xl">logout</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="pt-20 px-6 pb-6 max-w-6xl mx-auto">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <main className="ta-page" style={{ maxWidth: 1280 }}>
+        <div className="ta-hist-head">
           <div>
-            <h1 className="text-xl font-bold text-on-surface">Jugadas Guardadas</h1>
-            <p className="text-sm text-on-surface-variant">
-              Selecciona hasta 2 filas para comparar sus métricas lado a lado.
-            </p>
+            <span className="ta-eyebrow">Biblioteca de decisiones</span>
+            <h1>Jugadas guardadas</h1>
+            <p>Selecciona hasta 2 filas para compararlas lado a lado.</p>
           </div>
-          <button
-            onClick={handleExportCsv}
-            disabled={exporting || records.length === 0}
-            className="px-4 py-2 rounded-lg bg-primary hover:bg-secondary text-white font-bold text-sm flex items-center gap-2 shadow-md transition-all disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-sm">download</span>
-            {exporting ? 'Exportando...' : 'Exportar CSV'}
+          <button type="button" onClick={handleExportCsv} disabled={exporting || records.length === 0} className="ta-btn ta-btn-primary">
+            <Icon name="download" /> {exporting ? 'Exportando…' : 'Exportar CSV'}
           </button>
         </div>
 
-        {errorMessage && (
-          <div className="mb-6 p-3 bg-red-100 border border-red-300 text-red-800 text-xs rounded-lg font-semibold flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">error</span>
-            {errorMessage}
-          </div>
-        )}
+        {errorMessage && <Notice tone="err" icon="alert">{errorMessage}</Notice>}
 
         {loading ? (
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-surface-container text-center text-sm text-on-surface-variant">
-            Cargando historial...
-          </div>
+          <div className="ta-card ta-state"><Icon name="reset" className="ta-spin" /><div>Cargando historial…</div></div>
         ) : records.length === 0 ? (
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-surface-container text-center">
-            <span className="material-symbols-outlined text-4xl text-on-surface-variant block mb-2">inbox</span>
-            <p className="text-sm text-on-surface-variant">
-              Aún no hay jugadas guardadas. Pídele a un Entrenador que guarde una simulación desde el simulador.
-            </p>
+          <div className="ta-card ta-state">
+            <Icon name="inbox" />
+            <div>Aún no hay jugadas guardadas. Pídele a un Entrenador que guarde una simulación desde el simulador.</div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-surface-container overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="ta-tablewrap">
+            <table className="ta-table">
               <thead>
-                <tr className="border-b border-surface-container text-left text-xs uppercase text-on-surface-variant">
-                  <th className="p-3 w-10"></th>
-                  <th className="p-3">Fecha</th>
-                  <th className="p-3">Guardado por</th>
-                  <th className="p-3">Deporte</th>
-                  <th className="p-3">Jugada</th>
-                  <th className="p-3">Probabilidad</th>
-                  <th className="p-3">Eficiencia</th>
-                  <th className="p-3">Riesgo</th>
-                  <th className="p-3">Acción Recomendada</th>
+                <tr>
+                  <th style={{ width: 40 }}></th>
+                  <th>Fecha</th>
+                  <th>Guardado por</th>
+                  <th>Deporte</th>
+                  <th>Jugada</th>
+                  <th>Probabilidad</th>
+                  <th>Eficiencia</th>
+                  <th>Riesgo</th>
+                  <th>Acción recomendada</th>
                 </tr>
               </thead>
               <tbody>
                 {records.map((r) => (
-                  <tr key={r.id} className="border-b border-surface-container last:border-0 hover:bg-surface-container-low">
-                    <td className="p-3">
-                      <input
-                        type="checkbox"
-                        checked={compareIds.includes(r.id)}
-                        onChange={() => toggleCompare(r.id)}
-                        className="w-4 h-4 text-primary"
-                      />
-                    </td>
-                    <td className="p-3 font-mono text-xs">{formatDate(r.createdAt)}</td>
-                    <td className="p-3 text-xs text-on-surface-variant">{r.savedByEmail || '—'}</td>
-                    <td className="p-3">
-                      <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-surface-container-low">
-                        {r.sport === 'BASKETBALL' ? 'Baloncesto' : 'Tenis'}
-                      </span>
-                    </td>
-                    <td className="p-3">{r.playName || '—'}</td>
-                    <td className="p-3 font-bold">{pct(r.successProbability)}</td>
-                    <td className="p-3">{pct(r.secondaryEfficiency)}</td>
-                    <td className="p-3 text-error">{pct(r.riskIndex)}</td>
-                    <td className="p-3 font-mono text-xs">{r.recommendedAction || '—'}</td>
+                  <tr key={r.id} data-sel={compareIds.includes(r.id) ? 1 : 0}>
+                    <td><input type="checkbox" checked={compareIds.includes(r.id)} onChange={() => toggleCompare(r.id)} aria-label="Comparar esta jugada" /></td>
+                    <td className="ta-mono" style={{ fontSize: 12, color: 'var(--ta-mute)' }}>{formatDate(r.createdAt)}</td>
+                    <td style={{ color: 'var(--ta-mute)' }}>{r.savedByEmail || '—'}</td>
+                    <td><span className={`ta-tag ${r.sport === 'BASKETBALL' ? 'bb' : 'tn'}`}>{r.sport === 'BASKETBALL' ? 'Baloncesto' : 'Tenis'}</span></td>
+                    <td style={{ fontWeight: 600 }}>{r.playName || '—'}</td>
+                    <td>{bar(r.successProbability, 'var(--ta-ok)')}</td>
+                    <td>{bar(r.secondaryEfficiency, 'var(--ta-blue)')}</td>
+                    <td>{bar(r.riskIndex, 'var(--ta-danger)')}</td>
+                    <td className="ta-mono" style={{ fontSize: 12 }}>{r.recommendedAction ? humanizeAction(r.recommendedAction) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -200,26 +157,20 @@ export const SimulationHistory = ({ user, onLogout, onBackToSimulator }) => {
         )}
 
         {compareRecords.length === 2 && (
-          <div className="mt-6 bg-white p-6 rounded-lg shadow-sm border border-surface-container">
-            <h2 className="text-sm font-bold text-on-surface mb-4">Comparativa de Jugadas</h2>
-            <div className="grid grid-cols-2 gap-6">
-              {compareRecords.map((r) => (
-                <div key={r.id} className="p-4 bg-surface-container-low rounded-lg">
-                  <p className="text-xs font-bold uppercase text-on-surface-variant mb-2">
-                    {r.playName || 'Jugada'} · {formatDate(r.createdAt)}
-                  </p>
-                  <div className="space-y-1.5 text-sm">
-                    <div className="flex justify-between"><span>Probabilidad de Éxito</span><span className="font-bold">{pct(r.successProbability)}</span></div>
-                    <div className="flex justify-between"><span>Eficiencia</span><span className="font-bold">{pct(r.secondaryEfficiency)}</span></div>
-                    <div className="flex justify-between"><span>Riesgo</span><span className="font-bold text-error">{pct(r.riskIndex)}</span></div>
-                    <div className="flex justify-between"><span>Acción</span><span className="font-mono text-xs">{r.recommendedAction}</span></div>
-                  </div>
-                  {r.tacticalNote && (
-                    <p className="text-xs text-on-surface-variant mt-3 leading-relaxed">{r.tacticalNote}</p>
-                  )}
+          <div className="ta-compare">
+            {compareRecords.map((r) => (
+              <div key={r.id} className="ta-card">
+                <h3>{r.playName || 'Jugada'}</h3>
+                <small>{r.sport === 'BASKETBALL' ? 'Baloncesto' : 'Tenis'} · {formatDate(r.createdAt)}</small>
+                <div style={{ marginTop: 12 }}>
+                  <div className="ta-kv"><span>Probabilidad de éxito</span><b>{pct(r.successProbability)}</b></div>
+                  <div className="ta-kv"><span>Eficiencia</span><b>{pct(r.secondaryEfficiency)}</b></div>
+                  <div className="ta-kv"><span>Riesgo</span><b style={{ color: 'var(--ta-danger)' }}>{pct(r.riskIndex)}</b></div>
+                  <div className="ta-kv"><span>Acción</span><b style={{ fontSize: 15 }}>{r.recommendedAction ? humanizeAction(r.recommendedAction) : '—'}</b></div>
                 </div>
-              ))}
-            </div>
+                {r.tacticalNote && <p className="ta-reco-note" style={{ marginBottom: 0 }}>{r.tacticalNote}</p>}
+              </div>
+            ))}
           </div>
         )}
       </main>
