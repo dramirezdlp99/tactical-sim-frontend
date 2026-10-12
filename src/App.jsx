@@ -12,8 +12,12 @@ import { RegisterScreen } from './components/RegisterScreen';
 import { TacticalSimulator } from './components/TacticalSimulator';
 import { TennisSimulator } from './components/TennisSimulator';
 import { SimulationHistory } from './components/SimulationHistory';
+import { MirrorViewer } from './components/MirrorViewer';
 
 export function App() {
+  // Pantalla del proyector (duplicación de pantalla): /?viewer=CODIGO, sin login.
+  const viewerCode = new URLSearchParams(window.location.search).get('viewer');
+
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login'); // 'login', 'register', 'bball', 'tennis', 'history'
   // Recuerda desde qué simulador se entró al historial, para volver al correcto con "Volver al Simulador"
@@ -75,6 +79,10 @@ export function App() {
   const handleBackToSimulator = () => {
     setCurrentView(previousSimulatorView);
   };
+
+  if (viewerCode) {
+    return <MirrorViewer roomCode={viewerCode} />;
+  }
 
   return (
     <div className="ta-root">
