@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { getModeConfig } from './entityModes';
 import { BASKETBALL_PLAYS, getPlayById } from './predefinedPlays';
 import { BACKEND_URL } from './apiConfig';
@@ -11,6 +11,8 @@ import { Icon } from './ui/Icon';
 import { Card, Gauge, Meter, Toggle } from './ui/Widgets';
 import { PlayLibrary } from './ui/PlayLibrary';
 import { LocalBoards } from './ui/LocalBoards';
+import { MirrorPanel } from './ui/MirrorPanel';
+import { useMirrorEmitter } from './useMirrorEmitter';
 import { humanizeAction, toPct } from './ui/format';
 import { BasketballCourt, bbToPercent, bbClamp, BB_BALL_OFFSET, BB_SCALE } from './courts/BasketballCourt';
 
@@ -41,6 +43,12 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
   const isCoach = user?.role === 'ROLE_COACH' || user?.role === 'ROLE_ADMIN';
   const isOnline = useOnlineStatus();
 
+  // Duplicación de pantalla en tiempo real: cada cambio de la pizarra se emite al proyector.
+  const mirror = useMirrorEmitter({ token: user?.token || localStorage.getItem('token') });
+  useEffect(() => {
+    if (mirror.active) mirror.send({ sport: 'BASKETBALL', positions, result, layers: { heat: showHeatmap, vectors: showVectors, rival: showRival } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions, result, showHeatmap, showVectors, showRival, mirror.status]);
 
   const clearResult = useCallback(() => {
     setResult(null);
@@ -201,6 +209,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
                 <button type="button" className="ta-btn" onClick={handleReset}><Icon name="reset" /> Limpiar cancha</button>
               </div>
               <div className="ta-dock-group">
+                <MirrorPanel mirror={mirror} disabled={!isOnline} />
                 {isCoach && (
                   <button
                     type="button" className="ta-btn" onClick={handleSavePlay}
