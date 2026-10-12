@@ -1,0 +1,31 @@
+/* Duplicación de pantalla: panel del emisor y pantalla del proyector.
+   Guardar en: tactical-sim-frontend/src/styles/mirror.css */
+
+.ta-modal-back { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgba(4, 6, 10, 0.72); backdrop-filter: blur(6px); }
+.ta-modal { width: 100%; max-width: 480px; border-radius: 20px; padding: 22px; background: linear-gradient(180deg, #131b27, #0c121a); border: 1px solid var(--ta-line); box-shadow: 0 40px 100px -30px #000; }
+.ta-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.ta-modal h2 { margin: 0; font-family: var(--ta-font-display); font-weight: 800; font-size: 28px; letter-spacing: 0.04em; text-transform: uppercase; display: flex; gap: 10px; align-items: center; }
+.ta-modal h2 .ta-icon { color: var(--ta-accent); }
+.ta-code { display: flex; gap: 8px; justify-content: center; margin: 18px 0 6px; }
+.ta-code span { width: 50px; height: 66px; display: grid; place-items: center; border-radius: 12px; background: var(--ta-bg); border: 1px solid var(--ta-accent-line); font-family: var(--ta-font-display); font-weight: 800; font-size: 40px; color: var(--ta-accent); }
+.ta-livebadge { display: inline-flex; align-items: center; gap: 8px; font-family: var(--ta-font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; }
+.ta-livebadge i { width: 9px; height: 9px; border-radius: 50%; background: var(--ta-danger); animation: ta-ping2 1.4s infinite; }
+.ta-livebadge[data-s='reconnecting'] i, .ta-livebadge[data-s='connecting'] i { background: var(--ta-warn); }
+@keyframes ta-ping2 { 0% { box-shadow: 0 0 0 0 rgba(255, 77, 94, 0.7); } 100% { box-shadow: 0 0 0 9px rgba(255, 77, 94, 0); } }
+.ta-linkbox { display: flex; gap: 8px; margin-top: 12px; }
+.ta-linkbox input { flex: 1; min-width: 0; height: 40px; border-radius: 10px; border: 1px solid var(--ta-line); background: var(--ta-bg); color: var(--ta-mute); padding: 0 12px; font-family: var(--ta-font-mono); font-size: 12px; }
+.ta-steps { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 13px; color: var(--ta-mute); }
+.ta-steps li { display: flex; gap: 10px; }
+.ta-steps b { color: var(--ta-accent); font-family: var(--ta-font-display); }
+
+.ta-viewer { min-height: 100vh; display: flex; flex-direction: column; background: #05080c; }
+.ta-viewer-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 22px; border-bottom: 1px solid var(--ta-line-soft); }
+.ta-viewer-stage { flex: 1; display: grid; place-items: center; padding: 14px 22px; min-height: 0; }
+.ta-viewer-stage .ta-court { max-height: calc(100vh - 190px); }
+.ta-viewer-wait { text-align: center; color: var(--ta-mute); }
+.ta-viewer-wait .ta-icon { font-size: 54px; color: var(--ta-accent); margin-bottom: 14px; }
+.ta-viewer-wait h2 { margin: 0 0 6px; font-family: var(--ta-font-display); font-weight: 800; font-size: 40px; text-transform: uppercase; color: var(--ta-text); }
+.ta-viewer-bar { display: flex; align-items: center; gap: 26px; padding: 14px 26px; border-top: 1px solid var(--ta-line-soft); background: linear-gradient(180deg, #0c121a, #080c12); }
+.ta-viewer-bar .big { font-family: var(--ta-font-display); font-weight: 800; font-size: 64px; line-height: 1; }
+.ta-viewer-bar .act { font-family: var(--ta-font-display); font-weight: 800; font-size: 34px; text-transform: uppercase; color: var(--ta-accent); line-height: 1; }
+.ta-viewer-bar p { margin: 4px 0 0; color: var(--ta-mute); font-size: 14px; max-width: 760px; }
