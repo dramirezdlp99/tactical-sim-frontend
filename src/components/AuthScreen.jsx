@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BACKEND_URL } from './apiConfig';
+import { Icon } from './ui/Icon';
+import { Brand } from './ui/Shell';
+import { HeroArt } from './ui/HeroArt';
 
 export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
-  // CAMBIO CLAVE: el login ahora es de dos pasos reales.
+  // El login es de dos pasos reales.
   // 'CREDENTIALS' -> POST /login (valida email+password, emite tempToken)
   // 'OTP'         -> POST /verify-2fa (valida el código, entrega el JWT)
   const [step, setStep] = useState('CREDENTIALS');
@@ -44,6 +47,12 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
     }
   };
 
+  const handleOtpKeyDown = (e, index) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      document.getElementById(`otp-${index - 1}`)?.focus();
+    }
+  };
+
   // Paso 1: valida email+password contra el backend y pide el código
   const requestTwoFactorCode = async () => {
     setLoading(true);
@@ -68,7 +77,7 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
         setErrorMessage(json?.message || 'Correo o contraseña incorrectos.');
       }
     } catch (err) {
-      setErrorMessage('No se pudo conectar con el servidor (puerto 9096). Verifica que el backend esté encendido.');
+      setErrorMessage('No se pudo conectar con el servidor. Verifica que el backend esté encendido.');
     } finally {
       setLoading(false);
     }
@@ -106,9 +115,8 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
         localStorage.setItem('token', token);
         localStorage.setItem('email', email);
 
-        // El rol siempre lo determina el backend (lo que quedo guardado al
-        // registrarse), nunca una eleccion hecha aqui en el login -- por
-        // eso ya no hay selector de rol en esta pantalla.
+        // El rol siempre lo determina el backend (lo que quedó guardado al
+        // registrarse), nunca una elección hecha aquí en el login.
         onLoginSuccess({
           email,
           token,
@@ -120,7 +128,7 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
         setErrorMessage(json?.message || 'Código inválido.');
       }
     } catch (err) {
-      setErrorMessage('No se pudo conectar con el servidor (puerto 9096).');
+      setErrorMessage('No se pudo conectar con el servidor.');
     } finally {
       setLoading(false);
     }
@@ -137,159 +145,106 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-xl bg-surface-container-lowest rounded-xl shadow-xl p-8 border border-surface-container">
-
-        {/* Banner de Seguridad */}
-        <div className="mb-6 inline-flex items-center gap-3 px-3.5 py-1.5 rounded-full bg-surface-container-low shadow-sm w-full justify-between">
-          <div className="flex items-center gap-1.5 text-emerald-700">
-            <span className="material-symbols-outlined text-sm">lock</span>
-            <span className="text-xs font-semibold uppercase tracking-wider">Acceso Restringido • Cuerpo Técnico</span>
-          </div>
-          <span className="text-xs text-on-surface-variant font-mono">TLS 1.3 • Zero-Trust</span>
-        </div>
-
-        {/* Encabezado */}
-        <div className="flex flex-col items-center text-center pb-6">
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight">
-            {step === 'CREDENTIALS' ? 'Iniciar Sesión Táctica' : 'Verificación de Dos Pasos'}
-          </h1>
-          <p className="text-sm text-on-surface-variant mt-1">
-            {step === 'CREDENTIALS'
-              ? 'Plataforma Predictiva de Alto Rendimiento Deportivo'
-              : `Ingresa el código de 6 dígitos enviado a ${email}`}
+    <div className="ta-app ta-auth" data-sport="BASKETBALL">
+      <section className="ta-auth-hero">
+        <HeroArt />
+        <Brand />
+        <div className="ta-hero-copy">
+          <span className="ta-eyebrow">Plataforma predictiva de alto rendimiento</span>
+          <h2 className="ta-hero-title">Lee el juego <em>antes</em> de que ocurra.</h2>
+          <p className="ta-hero-sub">
+            Dibuja la jugada, deja que el cuerpo técnico virtual rival reaccione y
+            mide la probabilidad real de éxito con un modelo entrenado, en
+            baloncesto y tenis.
           </p>
-        </div>
-
-        {errorMessage && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-800 text-xs rounded-lg font-semibold">
-            {errorMessage}
+          <div className="ta-hero-stats">
+            <div><b>4.000</b><span>Escenarios por jugada</span></div>
+            <div><b>80K</b><span>Posesiones de entrenamiento</span></div>
+            <div><b>2FA</b><span>Acceso verificado</span></div>
           </div>
-        )}
+        </div>
+      </section>
 
-        {step === 'CREDENTIALS' && (
-          <>
-            <form onSubmit={handleCredentialsSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Correo Corporativo</label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-on-surface-variant">mail</span>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nombre@organizacion.com"
-                    autoComplete="off"
-                    className="w-full h-11 pl-10 pr-10 bg-surface-container-low text-on-surface text-sm rounded-lg border border-surface-container focus:outline-none focus:ring-2 focus:ring-secondary"
-                    required
-                  />
+      <section className="ta-auth-panel">
+        <div className="ta-auth-box">
+          <div className="ta-secure">
+            <span><Icon name="lock" /> ACCESO RESTRINGIDO · CUERPO TÉCNICO</span>
+            <span>TLS 1.3</span>
+          </div>
+
+          <h1>{step === 'CREDENTIALS' ? 'Iniciar sesión' : 'Verificación en dos pasos'}</h1>
+          <p className="ta-lead">
+            {step === 'CREDENTIALS'
+              ? 'Ingresa con tu cuenta del club, academia o federación.'
+              : `Ingresa el código de 6 dígitos enviado a ${email}.`}
+          </p>
+
+          {errorMessage && (
+            <div className="ta-notice err" role="alert"><Icon name="alert" /><div>{errorMessage}</div></div>
+          )}
+
+          {step === 'CREDENTIALS' && (
+            <>
+              <form onSubmit={handleCredentialsSubmit} className="ta-form">
+                <div>
+                  <label className="ta-label" htmlFor="login-email">Correo corporativo</label>
+                  <div className="ta-inwrap">
+                    <Icon name="mail" />
+                    <input id="login-email" className="ta-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@organizacion.com" autoComplete="off" required />
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Contraseña Táctica</label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-on-surface-variant">vpn_key</span>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="off"
-                    className="w-full h-11 pl-10 pr-10 bg-surface-container-low text-on-surface text-sm rounded-lg border border-surface-container focus:outline-none focus:ring-2 focus:ring-secondary"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-on-surface-variant"
-                  >
-                    <span className="material-symbols-outlined">{showPassword ? 'visibility_off' : 'visibility'}</span>
-                  </button>
+                <div>
+                  <label className="ta-label" htmlFor="login-pass">Contraseña</label>
+                  <div className="ta-inwrap">
+                    <Icon name="key" />
+                    <input id="login-pass" className="ta-input" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="off" required />
+                    <button type="button" className="ta-eye" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                      <Icon name={showPassword ? 'eyeoff' : 'eye'} />
+                    </button>
+                  </div>
                 </div>
+                <button type="submit" disabled={loading} className="ta-btn ta-btn-primary ta-btn-block" style={{ marginTop: 6 }}>
+                  {loading ? 'Validando credenciales…' : 'Continuar'} <Icon name="arrowright" />
+                </button>
+              </form>
+
+              <div className="ta-links">
+                <span>¿Tu club aún no tiene cuenta?</span>
+                <button type="button" onClick={onSwitchToRegister} className="ta-link">
+                  Solicitar alta enterprise <Icon name="arrowright" />
+                </button>
               </div>
+            </>
+          )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-12 mt-4 bg-primary hover:bg-secondary text-white font-semibold rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                <span>{loading ? 'VALIDANDO CREDENCIALES...' : 'Continuar'}</span>
-                <span className="material-symbols-outlined">arrow_forward</span>
-              </button>
-            </form>
-
-            <div className="mt-6 pt-4 border-t border-surface-container flex items-center justify-between">
-              <span className="text-xs text-on-surface-variant">¿No tiene cuenta de club registrada?</span>
-              <button
-                type="button"
-                onClick={onSwitchToRegister}
-                className="text-xs font-bold text-secondary hover:underline flex items-center gap-1"
-              >
-                <span>Solicitar Alta Enterprise</span>
-                <span className="material-symbols-outlined text-sm">open_in_new</span>
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === 'OTP' && (
-          <form onSubmit={handleOtpSubmit} className="space-y-4">
-            <div className="p-4 bg-surface-container-low rounded-lg border border-surface-container">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-secondary">security</span>
-                  Código de Verificación (2FA)
-                </span>
-                <span className="text-xs text-error font-mono font-medium">Expira en {formatTimer()}</span>
+          {step === 'OTP' && (
+            <form onSubmit={handleOtpSubmit} className="ta-form">
+              <div className="ta-links" style={{ margin: 0 }}>
+                <span className="ta-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="shield" /> Código de verificación</span>
+                <span className="ta-timer">Expira en {formatTimer()}</span>
               </div>
-              <div className="grid grid-cols-6 gap-2 mt-3">
+              <div className="ta-otp">
                 {otp.map((digit, idx) => (
                   <input
-                    key={idx}
-                    id={`otp-${idx}`}
-                    type="text"
-                    maxLength="1"
-                    value={digit}
-                    placeholder="•"
+                    key={idx} id={`otp-${idx}`} type="text" inputMode="numeric" maxLength="1"
+                    value={digit} data-filled={digit ? 1 : 0} placeholder="·"
+                    aria-label={`Dígito ${idx + 1}`}
                     onChange={(e) => handleOtpChange(e.target.value, idx)}
-                    className="h-12 text-center font-mono text-lg text-on-surface bg-surface-container-lowest rounded-lg border border-surface-container focus:ring-2 focus:ring-secondary font-bold"
+                    onKeyDown={(e) => handleOtpKeyDown(e, idx)}
                   />
                 ))}
               </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-12 mt-2 bg-primary hover:bg-secondary text-white font-semibold rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              <span>{loading ? 'VERIFICANDO CÓDIGO...' : 'Acceder a la Terminal Táctica'}</span>
-              <span className="material-symbols-outlined">arrow_forward</span>
-            </button>
-
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={handleBackToCredentials}
-                className="text-xs font-bold text-on-surface-variant hover:underline flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-sm">arrow_back</span>
-                Volver
+              <button type="submit" disabled={loading} className="ta-btn ta-btn-primary ta-btn-block" style={{ marginTop: 6 }}>
+                {loading ? 'Verificando código…' : 'Entrar a la sala táctica'} <Icon name="arrowright" />
               </button>
-              <button
-                type="button"
-                onClick={handleResendCode}
-                disabled={loading}
-                className="text-xs font-bold text-secondary hover:underline"
-              >
-                Reenviar código
-              </button>
-            </div>
-          </form>
-        )}
-
-      </div>
+              <div className="ta-links" style={{ margin: 0 }}>
+                <button type="button" onClick={handleBackToCredentials} className="ta-link mute"><Icon name="arrowleft" /> Volver</button>
+                <button type="button" onClick={handleResendCode} disabled={loading} className="ta-link">Reenviar código</button>
+              </div>
+            </form>
+          )}
+        </div>
+      </section>
     </div>
   );
 };
