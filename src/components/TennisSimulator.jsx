@@ -1,220 +1,134 @@
-import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { TENNIS_PLAYS, getPlayById } from './predefinedPlays';
 import { BACKEND_URL } from './apiConfig';
 import { useOnlineStatus } from './useOnlineStatus';
-import { saveLocalBoard, getLocalBoards, deleteLocalBoard } from './offlineBoards';
+import { useLocalBoards } from './useLocalBoards';
+import { useBoardDrag } from './useBoardDrag';
 import { OfflineBanner } from './OfflineBanner';
+import { TopBar, Notice } from './ui/Shell';
+import { Icon } from './ui/Icon';
+import { Card, Gauge, Meter, Toggle } from './ui/Widgets';
+import { PlayLibrary } from './ui/PlayLibrary';
+import { LocalBoards } from './ui/LocalBoards';
+import { humanizeAction, toPct } from './ui/format';
+import { TennisCourt, SURFACE_OPTIONS, tnToPercent, tnClamp } from './courts/TennisCourt';
+
+// Cancha en el sistema del motor: x = ancho (0-100), y = largo (0-100). El sacador está en y alto.
+const DEFAULT_POSITIONS = {
+  alcaraz: { x: 25, y: 92 },
+  sinner: { x: 50, y: 8 },
+  ball: { x: 38, y: 40 }
+};
+
+const MATCHES = {
+  'alcaraz-sinner': { server: 'C. ALCARAZ', receiver: 'J. SINNER', label: 'C. Alcaraz vs J. Sinner' },
+  'nadal-djokovic': { server: 'R. NADAL', receiver: 'N. DJOKOVIC', label: 'R. Nadal vs N. Djokovic' },
+  'medvedev-zverev': { server: 'D. MEDVEDEV', receiver: 'A. ZVEREV', label: 'D. Medvedev vs A. Zverev' }
+};
 
 export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHistory }) => {
   const [surface, setSurface] = useState('hard'); // 'hard', 'clay', 'grass'
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showVectors, setShowVectors] = useState(true);
+  const [showRival, setShowRival] = useState(true);
 
-  // NUEVO: jugadas predeterminadas (saques). 'custom' = posición manual.
   const [selectedPlayId, setSelectedPlayId] = useState('custom');
-  const selectedPlay = useMemo(
-    () => getPlayById(TENNIS_PLAYS, selectedPlayId),
-    [selectedPlayId]
-  );
+  const selectedPlay = useMemo(() => getPlayById(TENNIS_PLAYS, selectedPlayId), [selectedPlayId]);
 
   const [matchPreset, setMatchPreset] = useState('alcaraz-sinner');
-  const [playerServer, setPlayerServer] = useState('C. ALCARAZ');
-  const [playerReceiver, setPlayerReceiver] = useState('J. SINNER');
+  const match = MATCHES[matchPreset];
 
-  const defaultPositions = {
-    alcaraz: { x: 9, y: 58 },
-    sinner: { x: 92, y: 40 },
-    ball: { x: 46, y: 55 }
-  };
-
-  const [positions, setPositions] = useState(defaultPositions);
-
-  const [lastResult, setLastResult] = useState(null);
+  const [positions, setPositions] = useState(DEFAULT_POSITIONS);
+  const [result, setResult] = useState(null);
   const [saveStatus, setSaveStatus] = useState('');
   const isCoach = user?.role === 'ROLE_COACH' || user?.role === 'ROLE_ADMIN';
-
-  // NUEVO (Modo Campo / Offline): detecta conexión real del navegador y
-  // permite guardar/cargar pizarras en IndexedDB sin depender del backend.
   const isOnline = useOnlineStatus();
-  const [localBoards, setLocalBoards] = useState([]);
-  const [localBoardName, setLocalBoardName] = useState('');
-  const [localSaveStatus, setLocalSaveStatus] = useState(''); // '', 'saving', 'saved', 'error'
 
-  const refreshLocalBoards = useCallback(async () => {
-    try {
-      const boards = await getLocalBoards('TENNIS');
-      setLocalBoards(boards);
-    } catch (err) {
-      // IndexedDB no disponible en este navegador: el Modo Campo local
-      // simplemente no se ofrece, pero el resto de la app sigue igual.
-    }
+
+  const clearResult = useCallback(() => {
+    setResult(null);
+    setErrorMessage('');
+    setSaveStatus('');
   }, []);
 
-  useEffect(() => {
-    refreshLocalBoards();
-  }, [refreshLocalBoards]);
-
-  const [telemetry, setTelemetry] = useState({
-    holdProb: null,
-    aceProb: null,
-    shortPoint: null,
-    doubleFaultRisk: null,
-    recommendation: '—',
-    tacticalNote: '',
-    speed: '—',
-    rpm: '—'
+  const localBoards = useLocalBoards('TENNIS', {
+    getPositions: () => positions,
+    getNote: () => (selectedPlay.id !== 'custom' ? selectedPlay.name : ''),
+    onLoadBoard: (board) => {
+      setPositions(board.positions);
+      setSelectedPlayId('custom');
+      clearResult();
+    }
   });
 
-  const courtRef = useRef(null);
-  const activeTokenRef = useRef(null);
-  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const drag = useBoardDrag({
+    toPercent: tnToPercent,
+    clamp: tnClamp,
+    onStart: () => setSelectedPlayId('custom'),
+    onMove: (key, next) => setPositions((prev) => ({ ...prev, [key]: next }))
+  });
 
-  const handleMatchChange = (e) => {
-    const val = e.target.value;
-    setMatchPreset(val);
-    if (val === 'alcaraz-sinner') {
-      setPlayerServer('C. ALCARAZ');
-      setPlayerReceiver('J. SINNER');
-    } else if (val === 'nadal-djokovic') {
-      setPlayerServer('R. NADAL');
-      setPlayerReceiver('N. DJOKOVIC');
-    } else {
-      setPlayerServer('D. MEDVEDEV');
-      setPlayerReceiver('A. ZVEREV');
-    }
+  const handleSelectPlay = (playId) => {
+    setSelectedPlayId(playId);
+    const play = getPlayById(TENNIS_PLAYS, playId);
+    if (play.positions) setPositions(play.positions);
+    clearResult();
   };
 
   const handleReset = () => {
-    setPositions(defaultPositions);
-    setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, doubleFaultRisk: null, recommendation: '—', tacticalNote: '', speed: '—', rpm: '—' });
-    setLastResult(null);
-    setSaveStatus('');
-    setErrorMessage('');
+    setPositions(DEFAULT_POSITIONS);
     setSelectedPlayId('custom');
+    clearResult();
   };
 
-  const handlePlayChange = (e) => {
-    const playId = e.target.value;
-    setSelectedPlayId(playId);
-    const play = getPlayById(TENNIS_PLAYS, playId);
-    if (play.positions) {
-      setPositions(play.positions);
-    }
-    setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, doubleFaultRisk: null, recommendation: '—', tacticalNote: '', speed: '—', rpm: '—' });
-    setLastResult(null);
-    setSaveStatus('');
-    setErrorMessage('');
-  };
-
-  const handlePointerDown = (e, key) => {
-    activeTokenRef.current = key;
-    // Arrastrar una ficha invalida el preset elegido -> vuelve a "manual".
-    setSelectedPlayId('custom');
-    const tokenRect = e.currentTarget.getBoundingClientRect();
-    dragOffsetRef.current = {
-      x: e.clientX - tokenRect.left,
-      y: e.clientY - tokenRect.top
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerMove = (e, key) => {
-    if (activeTokenRef.current !== key || !courtRef.current) return;
-    const courtRect = courtRef.current.getBoundingClientRect();
-    let newX = ((e.clientX - courtRect.left - dragOffsetRef.current.x) / courtRect.width) * 100;
-    let newY = ((e.clientY - courtRect.top - dragOffsetRef.current.y) / courtRect.height) * 100;
-
-    newX = Math.max(3, Math.min(95, newX));
-    newY = Math.max(5, Math.min(92, newY));
-
-    setPositions((prev) => ({
-      ...prev,
-      [key]: { x: newX, y: newY }
-    }));
-  };
-
-  const handlePointerUp = (e, key) => {
-    if (activeTokenRef.current === key) {
-      activeTokenRef.current = null;
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-  };
-
-  const handleRunTennisSimulation = async () => {
+  const handleRun = async () => {
     setLoading(true);
     setErrorMessage('');
-
     try {
       const token = user?.token || localStorage.getItem('token') || '';
       const res = await fetch(`${BACKEND_URL}/api/v1/simulation/run`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           match_id: `ATP-${matchPreset.toUpperCase()}-2026`,
-          team_home_positions: [{ player_id: playerServer, x: positions.alcaraz.x, y: positions.alcaraz.y }],
-          team_away_positions: [{ player_id: playerReceiver, x: positions.sinner.x, y: positions.sinner.y }],
+          team_home_positions: [{ player_id: match.server, x: positions.alcaraz.x, y: positions.alcaraz.y }],
+          team_away_positions: [{ player_id: match.receiver, x: positions.sinner.x, y: positions.sinner.y }],
           ball_position: { player_id: 'BALL', x: positions.ball.x, y: positions.ball.y }
         })
       });
-
       const json = await res.json().catch(() => null);
-
       if (res.ok && json?.data) {
-        const data = json.data;
-        // CAMBIO: antes aceProb y shortPoint eran success_probability
-        // multiplicado por ratios fijos (0.45 y 0.60) -- ni siquiera eran
-        // datos reales distintos. Ahora vienen de campos calculados de
-        // verdad por el motor de IA a partir de la geometría del saque.
-        setTelemetry({
-          holdProb: Math.round(data.success_probability * 100),
-          aceProb: Math.round(data.success_probability * 100),
-          shortPoint: Math.round((data.secondary_efficiency ?? 0) * 100),
-          doubleFaultRisk: Math.round((data.risk_index ?? 0) * 100),
-          recommendation: data.recommended_action || 'Sin recomendación disponible',
-          tacticalNote: data.tactical_note || '',
-          speed: data.ball_speed_kmh != null ? `${data.ball_speed_kmh} km/h` : '—',
-          rpm: data.spin_rate_rpm != null ? `${data.spin_rate_rpm} RPM` : '—'
-        });
-        setLastResult(data);
+        setResult(json.data);
         setSaveStatus('');
       } else {
-        // CAMBIO CLAVE: antes se rellenaba holdProb con un número
-        // aleatorio (75-90%) como si viniera de la IA. Ahora se muestra
-        // el error real y no se inventan datos.
-        setErrorMessage(
-          json?.message || `Error del servidor (HTTP ${res.status}) al ejecutar la simulación.`
-        );
+        setErrorMessage(json?.message || `Error del servidor (HTTP ${res.status}) al ejecutar la simulación.`);
       }
     } catch (err) {
-      setErrorMessage('No se pudo conectar con el backend (puerto 9096) o con el motor de IA.');
+      setErrorMessage('No se pudo conectar con el backend o con el motor de IA.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSavePlay = async () => {
-    if (!lastResult) return;
+    if (!result) return;
     setSaveStatus('saving');
     try {
       const token = user?.token || localStorage.getItem('token') || '';
       const res = await fetch(`${BACKEND_URL}/api/v1/simulation/history`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           sport: 'TENNIS',
           playName: selectedPlay.id !== 'custom' ? selectedPlay.name : 'Saque Personalizado',
           positionsJson: JSON.stringify(positions),
-          successProbability: lastResult.success_probability,
-          secondaryEfficiency: lastResult.secondary_efficiency,
-          riskIndex: lastResult.risk_index,
-          recommendedAction: lastResult.recommended_action,
-          tacticalNote: lastResult.tactical_note
+          successProbability: result.success_probability,
+          secondaryEfficiency: result.secondary_efficiency,
+          riskIndex: result.risk_index,
+          recommendedAction: result.recommended_action,
+          tacticalNote: result.tactical_note
         })
       });
       setSaveStatus(res.ok ? 'saved' : 'error');
@@ -223,409 +137,126 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
     }
   };
 
-  // NUEVO: guarda la pizarra actual (posiciones + nota) en IndexedDB, sin
-  // tocar el backend. Funciona con o sin conexión, y con cualquier rol.
-  const handleSaveLocalBoard = async () => {
-    setLocalSaveStatus('saving');
-    try {
-      await saveLocalBoard({
-        sport: 'TENNIS',
-        name: localBoardName,
-        positions,
-        note: selectedPlay.id !== 'custom' ? selectedPlay.name : ''
-      });
-      setLocalBoardName('');
-      setLocalSaveStatus('saved');
-      await refreshLocalBoards();
-    } catch (err) {
-      setLocalSaveStatus('error');
-    }
-  };
-
-  const handleLoadLocalBoard = (board) => {
-    setPositions(board.positions);
-    setSelectedPlayId('custom');
-    setTelemetry({ holdProb: null, aceProb: null, shortPoint: null, doubleFaultRisk: null, recommendation: '—', tacticalNote: '', speed: '—', rpm: '—' });
-    setErrorMessage('');
-    setLastResult(null);
-    setSaveStatus('');
-  };
-
-  const handleDeleteLocalBoard = async (id) => {
-    try {
-      await deleteLocalBoard(id);
-      await refreshLocalBoards();
-    } catch (err) {
-      // si falla el borrado, la pizarra simplemente sigue apareciendo en la lista
-    }
-  };
-
-  const getSurfaceColor = () => {
-    if (surface === 'clay') return '#f5d5cc';
-    if (surface === 'grass') return '#d4ecd5';
-    return '#dce9ff';
-  };
+  const probability = toPct(result?.success_probability);
+  const angle = toPct(result?.secondary_efficiency);
+  const doubleFault = toPct(result?.risk_index);
 
   return (
-    <div className="bg-background min-h-screen text-on-surface">
-      {/* Header Superior */}
-      <header className="fixed top-0 left-0 right-0 h-16 z-50 bg-white/95 backdrop-blur-md border-b border-surface-container px-6 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-xl tracking-tight text-on-surface">TACTIC<span className="text-secondary">AI</span></span>
-            <span className="text-xs uppercase text-on-surface-variant font-semibold">Simulador Tenis ATP</span>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 bg-surface-container-low px-3 py-1 rounded-full border border-surface-container">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-xs text-emerald-700 font-mono font-medium">Hawk-Eye Core Active</span>
-          </div>
-        </div>
+    <div className="ta-app" data-sport="TENNIS">
+      <TopBar
+        user={user} isOnline={isOnline} sport="TENNIS"
+        onBasketball={onSwitchToBasketball} onLogout={onLogout} onViewHistory={onViewHistory}
+        modeLabel="Tenis · ATP Tour"
+      />
 
-        <div className="flex items-center gap-4">
-          {user?.role === 'ROLE_ANALYST' && onViewHistory && (
-            <button
-              onClick={onViewHistory}
-              className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface transition-colors"
-            >
-              <span className="material-symbols-outlined text-sm">analytics</span>
-              Ver Historial
-            </button>
-          )}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
-              {user?.email?.charAt(0).toUpperCase() || 'A'}
-            </div>
-            <span className="text-sm font-semibold hidden md:inline">{user?.email || 'Analista ATP'}</span>
-          </div>
-          <button onClick={onLogout} className="p-1.5 rounded hover:bg-red-50 text-on-surface-variant hover:text-error transition-colors">
-            <span className="material-symbols-outlined text-xl">logout</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="pt-20 px-6 pb-6 max-w-7xl mx-auto">
-        {/* Barra de Controles */}
-        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 border border-surface-container flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2 bg-surface-container-low p-1 rounded">
-            <button
-              onClick={onSwitchToBasketball}
-              className="px-4 py-1.5 rounded text-xs font-bold uppercase text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-sm">sports_basketball</span> Baloncesto (NBA)
-            </button>
-            <button className="px-4 py-1.5 rounded text-xs font-bold uppercase bg-primary text-white shadow-sm flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-sm">sports_tennis</span> Tenis (ATP TOUR)
-            </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase text-on-surface-variant">Jugada:</span>
-              <select
-                value={selectedPlayId}
-                onChange={handlePlayChange}
-                className="bg-surface-container-low text-on-surface text-xs font-bold px-3 py-1.5 rounded border border-surface-container focus:outline-none cursor-pointer"
-              >
-                {TENNIS_PLAYS.map((play) => (
-                  <option key={play.id} value={play.id}>{play.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase text-on-surface-variant">Partido:</span>
-              <select
-                value={matchPreset}
-                onChange={handleMatchChange}
-                className="bg-surface-container-low text-on-surface text-xs font-bold px-3 py-1.5 rounded border border-surface-container focus:outline-none cursor-pointer"
-              >
-                <option value="alcaraz-sinner">C. Alcaraz vs J. Sinner</option>
-                <option value="nadal-djokovic">R. Nadal vs N. Djokovic</option>
-                <option value="medvedev-zverev">D. Medvedev vs A. Zverev</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase text-on-surface-variant">Superficie:</span>
-              <select
-                value={surface}
-                onChange={(e) => setSurface(e.target.value)}
-                className="bg-surface-container-low text-on-surface text-xs font-bold px-3 py-1.5 rounded border border-surface-container focus:outline-none cursor-pointer"
-              >
-                <option value="hard">Pista Dura (US Open)</option>
-                <option value="clay">Tierra Batida (Roland Garros)</option>
-                <option value="grass">Hierba Natural (Wimbledon)</option>
-              </select>
-            </div>
-
-            <button
-              onClick={handleReset}
-              className="px-3 py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-xs font-bold uppercase flex items-center gap-1 transition-colors"
-            >
-              <span className="material-symbols-outlined text-sm">restart_alt</span> Limpiar Cancha
-            </button>
-          </div>
-        </div>
-
-        {selectedPlay.id !== 'custom' && (
-          <div className="mb-6 p-3 bg-secondary/10 border border-secondary/30 rounded-lg flex items-start gap-2">
-            <span className="material-symbols-outlined text-secondary text-sm mt-0.5">school</span>
-            <p className="text-xs text-on-surface leading-relaxed">
-              <span className="font-bold">{selectedPlay.name}:</span> {selectedPlay.description}
-            </p>
-          </div>
-        )}
-
+      <main className="ta-page">
         {!isOnline && <OfflineBanner />}
+        {errorMessage && <Notice tone="err" icon="alert">{errorMessage}</Notice>}
 
-        {errorMessage && (
-          <div className="mb-6 p-3 bg-red-100 border border-red-300 text-red-800 text-xs rounded-lg font-semibold flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">error</span>
-            {errorMessage}
-          </div>
-        )}
-
-        {/* Workspace Principal */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-          {/* Cancha de Tenis ATP (7 columnas) */}
-          <div className="lg:col-span-7 bg-white p-4 rounded-lg shadow-sm border border-surface-container">
-            <div className="flex items-center justify-between mb-3 text-xs font-semibold">
-              <span className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                {playerServer} vs {playerReceiver} (Set 3 Break Point)
-              </span>
-              <span className="text-on-surface-variant font-mono">Escala 78ft x 36ft</span>
-            </div>
-
-            <div
-              ref={courtRef}
-              className="relative w-full aspect-[28/15] select-none rounded overflow-hidden shadow-inner cursor-crosshair border border-surface-container"
-              style={{ backgroundColor: '#eff4ff' }}
-            >
-              <svg className="w-full h-full absolute inset-0" viewBox="0 0 1000 520">
-                <rect x="70" y="50" width="860" height="420" rx="4" fill={getSurfaceColor()} />
-                <rect x="100" y="70" width="800" height="380" fill="none" stroke="#0b1c30" strokeWidth="2.5" />
-
-                <line x1="100" y1="115" x2="900" y2="115" stroke="#0b1c30" strokeWidth="1.8" />
-                <line x1="100" y1="405" x2="900" y2="405" stroke="#0b1c30" strokeWidth="1.8" />
-                <line x1="280" y1="115" x2="280" y2="405" stroke="#0b1c30" strokeWidth="2" />
-                <line x1="720" y1="115" x2="720" y2="405" stroke="#0b1c30" strokeWidth="2" />
-                <line x1="280" y1="260" x2="720" y2="260" stroke="#0b1c30" strokeWidth="2" />
-
-                <line x1="500" y1="58" x2="500" y2="462" stroke="#131b2e" strokeWidth="4.5" />
-                <line x1="500" y1="70" x2="500" y2="450" stroke="#FFFFFF" strokeWidth="2" strokeDasharray="2 3" />
-
-                <path d="M 90,320 Q 380,290 680,270" fill="none" stroke="#069669" strokeWidth="3" strokeDasharray="6 4" />
-                <circle cx="680" cy="270" r="6" fill="#069669" />
-              </svg>
-
-              {Object.entries(positions).map(([key, pos]) => {
-                const isBall = key === 'ball';
-                const isServer = key === 'alcaraz';
-                return (
-                  <div
-                    key={key}
-                    onPointerDown={(e) => handlePointerDown(e, key)}
-                    onPointerMove={(e) => handlePointerMove(e, key)}
-                    onPointerUp={(e) => handlePointerUp(e, key)}
-                    className="absolute cursor-grab active:cursor-grabbing flex flex-col items-center"
-                    style={{ top: `${pos.y}%`, left: `${pos.x}%`, transform: 'translate(-50%, -50%)' }}
-                  >
-                    {isBall ? (
-                      <div className="w-5 h-5 rounded-full bg-yellow-400 shadow-lg ring-2 ring-white flex items-center justify-center">
-                        <div className="w-2.5 h-0.5 bg-black/40 rotate-45"></div>
-                      </div>
-                    ) : (
-                      <div className={`w-8 h-8 rounded-full font-bold flex items-center justify-center text-xs shadow-md ring-2 ring-white ${
-                        isServer ? 'bg-primary text-white' : 'bg-error text-white'
-                      }`}>
-                        {isServer ? 'S' : 'R'}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2">
-              {isCoach && (
-                <button
-                  onClick={handleSavePlay}
-                  disabled={!lastResult || saveStatus === 'saving' || !isOnline}
-                  title={!isOnline ? 'Requiere conexión: se reactiva automáticamente al volver la señal' : undefined}
-                  className="px-5 py-3 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-sm flex items-center justify-center gap-2 border border-surface-container transition-all disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    {saveStatus === 'saved' ? 'check_circle' : 'save'}
-                  </span>
-                  <span>
-                    {saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'saved' ? 'Guardada' : 'Guardar en Historial del Equipo'}
-                  </span>
-                </button>
+        <div className="ta-grid">
+          <div className="ta-col">
+            <Card title="Libro de saques" icon="whistle">
+              <PlayLibrary plays={TENNIS_PLAYS} selectedId={selectedPlayId} onSelect={handleSelectPlay} sport="TENNIS" />
+              {selectedPlay.id !== 'custom' && (
+                <div className="ta-brief"><b>{selectedPlay.name}</b>{selectedPlay.description}</div>
               )}
-              <button
-                onClick={handleRunTennisSimulation}
-                disabled={loading || !isOnline}
-                title={!isOnline ? 'La simulación con IA requiere conexión al backend' : undefined}
-                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
-              >
-                <span className={`material-symbols-outlined ${loading ? 'animate-spin' : ''}`}>
-                  {loading ? 'sync' : !isOnline ? 'wifi_off' : 'sports_score'}
-                </span>
-                <span>
-                  {loading ? 'CALCULANDO SERVICIO...' : !isOnline ? 'SIN CONEXIÓN' : 'SIMULAR SERVICIO & TRAYECTORIA CON IA'}
-                </span>
-              </button>
+            </Card>
+            <LocalBoards boards={localBoards} isOnline={isOnline} />
+          </div>
+
+          <div className="ta-stage">
+            <div className="ta-stage-head">
+              <div className="ta-stage-title">
+                Saque · {match.label}
+                <small>Cancha de individuales · 78 × 27 ft · arrastra sacador, restador y punto de caída</small>
+              </div>
+              <div className="ta-legend">
+                <span><i style={{ background: '#c8f03c' }} />Sacador</span>
+                <span><i style={{ background: '#f7f9fc' }} />Restador</span>
+                <span><i style={{ background: '#a4cf15', boxShadow: '0 0 0 2px #fff3' }} />Punto de caída</span>
+              </div>
+            </div>
+
+            <div className="ta-toolbar">
+              <span className="ta-field-label">Partido</span>
+              <select className="ta-select" value={matchPreset} onChange={(e) => setMatchPreset(e.target.value)} aria-label="Partido">
+                {Object.entries(MATCHES).map(([id, m]) => <option key={id} value={id}>{m.label}</option>)}
+              </select>
+              <span className="ta-field-label">Superficie</span>
+              <select className="ta-select" value={surface} onChange={(e) => setSurface(e.target.value)} aria-label="Superficie">
+                {SURFACE_OPTIONS.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+
+            <div className="ta-court-wrap">
+              <TennisCourt
+                positions={positions} result={result} surface={surface}
+                showHeat={showHeatmap} showVectors={showVectors} showRival={showRival}
+                drag={drag} serverName={match.server} receiverName={match.receiver}
+              />
+              {loading && <div className="ta-scan" />}
+            </div>
+
+            <div className="ta-dock">
+              <div className="ta-dock-group">
+                <button type="button" className="ta-btn" onClick={handleReset}><Icon name="reset" /> Limpiar cancha</button>
+              </div>
+              <div className="ta-dock-group">
+                {isCoach && (
+                  <button type="button" className="ta-btn" onClick={handleSavePlay} disabled={!result || saveStatus === 'saving' || !isOnline}
+                    title={!isOnline ? 'Requiere conexión: se reactiva al volver la señal' : undefined}>
+                    <Icon name={saveStatus === 'saved' ? 'check' : 'save'} />
+                    {saveStatus === 'saving' ? 'Guardando…' : saveStatus === 'saved' ? 'Guardada' : saveStatus === 'error' ? 'Reintentar' : 'Guardar en historial'}
+                  </button>
+                )}
+                <button type="button" className="ta-btn ta-btn-primary" onClick={handleRun} disabled={loading || !isOnline}
+                  title={!isOnline ? 'La simulación con IA requiere conexión al backend' : undefined}>
+                  <Icon name={loading ? 'reset' : !isOnline ? 'wifioff' : 'bolt'} className={loading ? 'ta-spin' : ''} />
+                  {loading ? 'Procesando…' : !isOnline ? 'Sin conexión' : 'Simular saque con IA'}
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Panel de Telemetría ATP */}
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container flex flex-col items-center">
-              <span className="text-xs uppercase font-bold text-on-surface-variant block mb-4 w-full">Telemetría Probabilística de Servicio</span>
+          <div className="ta-col ta-right">
+            <Card title="Motor predictivo" icon="brain">
+              <Gauge value={probability} caption={probability != null ? 'Punto ganado al saque' : 'Sin simulación'} />
+              <div className="ta-meters">
+                <Meter label="Limpieza del ángulo de saque" value={angle} />
+                <Meter label="Riesgo de doble falta" value={doubleFault} invert />
+                <Meter label="Velocidad estimada" raw={result?.ball_speed_kmh != null ? `${Math.round(result.ball_speed_kmh)} km/h` : null} />
+                <Meter label="Efecto (spin)" raw={result?.spin_rate_rpm != null ? `${Math.round(result.spin_rate_rpm)} rpm` : null} />
+              </div>
+              {result?.execution_thread && <div className="ta-model" style={{ marginTop: 12 }}>Ejecución: {result.execution_thread}</div>}
+            </Card>
 
-              <div className="relative w-32 h-32 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r="50" fill="none" stroke="#CBD5E1" strokeWidth="12" opacity="0.4" />
-                  <circle
-                    cx="60" cy="60" r="50" fill="none" stroke="#059669" strokeWidth="12"
-                    strokeDasharray="314"
-                    strokeDashoffset={314 - (314 * (telemetry.holdProb || 0)) / 100}
-                    strokeLinecap="round"
-                    className="transition-all duration-700 ease-out"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-bold text-on-surface">
-                    {telemetry.holdProb != null ? `${telemetry.holdProb}%` : '—'}
-                  </span>
-                  <span className="text-xs uppercase font-bold text-emerald-700">HOLD PROB</span>
+            <Card title="Recomendación" icon="target">
+              {result ? (
+                <div className="ta-reco">
+                  <div className="ta-reco-action">{humanizeAction(result.recommended_action)}</div>
+                  <p className="ta-reco-note" style={{ margin: 0 }}>{result.tactical_note}</p>
+                  {result.model_info && <div className="ta-model">{result.model_info}</div>}
                 </div>
-              </div>
-
-              <div className="w-full space-y-3 mt-6">
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span>Ace / Saque no devuelto</span>
-                    <span>{telemetry.aceProb != null ? `${telemetry.aceProb}%` : '—'}</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
-                    <div className="h-full bg-secondary rounded-full" style={{ width: `${telemetry.aceProb || 0}%` }}></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span>Limpieza del Ángulo de Saque</span>
-                    <span className="text-emerald-700">{telemetry.shortPoint != null ? `${telemetry.shortPoint}%` : '—'}</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${telemetry.shortPoint || 0}%` }}></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span>Riesgo de Doble Falta</span>
-                    <span className="text-error">{telemetry.doubleFaultRisk != null ? `${telemetry.doubleFaultRisk}%` : '—'}</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
-                    <div className="h-full bg-error rounded-full" style={{ width: `${telemetry.doubleFaultRisk || 0}%` }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container">
-              <span className="text-xs uppercase font-bold text-emerald-700 block mb-2 flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">smart_toy</span> Recomendación Táctica TacticAI
-              </span>
-              <div className="bg-surface-container-low p-3 rounded-lg">
-                <span className="block text-sm font-bold text-on-surface mb-1">{telemetry.recommendation}</span>
-                <p className="text-xs text-on-surface-variant leading-relaxed">
-                  {telemetry.tacticalNote || 'Ejecuta la simulación para obtener una recomendación real del motor de IA.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-surface-container grid grid-cols-2 gap-3 text-center">
-              <div className="bg-surface-container-low p-2 rounded">
-                <span className="text-xs text-on-surface-variant block">Velocidad</span>
-                <span className="text-sm font-bold text-on-surface">{telemetry.speed}</span>
-              </div>
-              <div className="bg-surface-container-low p-2 rounded">
-                <span className="text-xs text-on-surface-variant block">Spin Rate</span>
-                <span className="text-sm font-bold text-on-surface">{telemetry.rpm}</span>
-              </div>
-            </div>
-
-            {/* NUEVO: Modo Campo / Offline (Caso de Estudio 2, sección 2.2).
-                Pizarras guardadas en IndexedDB del navegador: funcionan sin
-                conexión, para consultar/editar en camerinos o campos sin red. */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-surface-container">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-bold text-on-surface">Pizarras Locales (Modo Campo)</span>
-                <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
-                  {isOnline ? 'En línea' : 'Sin conexión'}
-                </span>
-              </div>
-              <p className="text-xs text-on-surface-variant mb-3">
-                Guarda la pizarra actual en este dispositivo (funciona sin
-                internet) para consultarla o editarla luego en camerinos o
-                campos de entrenamiento sin cobertura.
-              </p>
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={localBoardName}
-                  onChange={(e) => setLocalBoardName(e.target.value)}
-                  placeholder="Nombre de la pizarra"
-                  className="flex-1 min-w-0 bg-surface-container-low text-on-surface text-xs px-3 py-2 rounded border border-surface-container focus:outline-none"
-                />
-                <button
-                  onClick={handleSaveLocalBoard}
-                  disabled={localSaveStatus === 'saving'}
-                  className="shrink-0 px-3 py-2 rounded bg-surface-container-low hover:bg-surface-container text-xs font-bold uppercase flex items-center gap-1 transition-colors disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    {localSaveStatus === 'saved' ? 'check_circle' : 'save'}
-                  </span>
-                </button>
-              </div>
-
-              {localBoards.length === 0 ? (
-                <p className="text-xs text-on-surface-variant italic">
-                  Aún no hay pizarras guardadas en este dispositivo.
-                </p>
               ) : (
-                <ul className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {localBoards.map((b) => (
-                    <li key={b.id} className="flex items-center justify-between bg-surface-container-low p-2 rounded text-xs">
-                      <div className="truncate pr-2">
-                        <span className="font-semibold block truncate">{b.name}</span>
-                        <span className="text-on-surface-variant">
-                          {new Date(b.savedAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => handleLoadLocalBoard(b)} className="p-1 rounded hover:bg-surface-container" title="Cargar en la cancha">
-                          <span className="material-symbols-outlined text-sm">upload</span>
-                        </button>
-                        <button onClick={() => handleDeleteLocalBoard(b.id)} className="p-1 rounded hover:bg-red-50 text-error" title="Eliminar">
-                          <span className="material-symbols-outlined text-sm">delete</span>
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <div className="ta-empty">Coloca sacador, restador y el punto de caída; luego pulsa <b>Simular saque con IA</b>.</div>
               )}
-            </div>
-          </div>
+            </Card>
 
+            {result?.defense_scheme && (
+              <Card title="Cuerpo técnico rival" icon="users">
+                <div className="ta-rival">
+                  <Icon name="whistle" />
+                  <div><b>Así reaccionaría el restador</b><span>{result.defense_scheme}</span></div>
+                </div>
+              </Card>
+            )}
+
+            <Card title="Capas de la cancha" icon="layers">
+              <Toggle label="Zona de impacto (calor)" checked={showHeatmap} onChange={setShowHeatmap} />
+              <Toggle label="Trayectoria del saque" checked={showVectors} onChange={setShowVectors} />
+              <Toggle label="Anticipación del restador" checked={showRival} onChange={setShowRival} />
+            </Card>
+          </div>
         </div>
       </main>
     </div>
