@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { TENNIS_PLAYS, getPlayById } from './predefinedPlays';
 import { BACKEND_URL } from './apiConfig';
 import { useOnlineStatus } from './useOnlineStatus';
@@ -10,6 +10,8 @@ import { Icon } from './ui/Icon';
 import { Card, Gauge, Meter, Toggle } from './ui/Widgets';
 import { PlayLibrary } from './ui/PlayLibrary';
 import { LocalBoards } from './ui/LocalBoards';
+import { MirrorPanel } from './ui/MirrorPanel';
+import { useMirrorEmitter } from './useMirrorEmitter';
 import { humanizeAction, toPct } from './ui/format';
 import { TennisCourt, SURFACE_OPTIONS, tnToPercent, tnClamp } from './courts/TennisCourt';
 
@@ -46,6 +48,12 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
   const isCoach = user?.role === 'ROLE_COACH' || user?.role === 'ROLE_ADMIN';
   const isOnline = useOnlineStatus();
 
+  // Duplicación de pantalla en tiempo real: cada cambio de la pizarra se emite al proyector.
+  const mirror = useMirrorEmitter({ token: user?.token || localStorage.getItem('token') });
+  useEffect(() => {
+    if (mirror.active) mirror.send({ sport: 'TENNIS', positions, result, surface, serverName: match.server, receiverName: match.receiver, layers: { heat: showHeatmap, vectors: showVectors, rival: showRival } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions, result, surface, match, showHeatmap, showVectors, showRival, mirror.status]);
 
   const clearResult = useCallback(() => {
     setResult(null);
@@ -202,6 +210,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
                 <button type="button" className="ta-btn" onClick={handleReset}><Icon name="reset" /> Limpiar cancha</button>
               </div>
               <div className="ta-dock-group">
+                <MirrorPanel mirror={mirror} disabled={!isOnline} />
                 {isCoach && (
                   <button type="button" className="ta-btn" onClick={handleSavePlay} disabled={!result || saveStatus === 'saving' || !isOnline}
                     title={!isOnline ? 'Requiere conexión: se reactiva al volver la señal' : undefined}>
