@@ -1,15 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Estilos globales mínimos. Todo el diseño de TacticAI vive en
+   src/styles/tacticai.css (prefijo ta-), sin depender de Tailwind ni de CDNs.
+   Guardar en: tactical-sim-frontend/src/index.css */
+html, body { margin: 0; background: #080b10; }
+body { overscroll-behavior: none; }
 
-@layer base {
-  body {
-    @apply bg-background text-on-surface font-sans antialiased min-h-screen;
-    overscroll-behavior: none;
-  }
-}
-
-/* Ocultar barras de desplazamiento para estética limpia */
-::-webkit-scrollbar {
-  display: none;
-}
+/* Barras de desplazamiento finas y oscuras (antes estaban ocultas y no se notaba que había más contenido) */
+* { scrollbar-width: thin; scrollbar-color: #243044 transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #243044; border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
