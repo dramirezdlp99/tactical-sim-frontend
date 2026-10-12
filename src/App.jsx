@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import '@fontsource/barlow-condensed/600.css';
+import '@fontsource/barlow-condensed/700.css';
+import '@fontsource/barlow-condensed/800.css';
+import '@fontsource/barlow/400.css';
+import '@fontsource/barlow/500.css';
+import '@fontsource/barlow/600.css';
+import '@fontsource/jetbrains-mono/400.css';
+import './styles/tacticai.css';
 import { AuthScreen } from './components/AuthScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { TacticalSimulator } from './components/TacticalSimulator';
@@ -11,12 +19,8 @@ export function App() {
   // Recuerda desde qué simulador se entró al historial, para volver al correcto con "Volver al Simulador"
   const [previousSimulatorView, setPreviousSimulatorView] = useState('bball');
 
-  // Verificar si ya existe un token en localStorage al recargar la página.
-  // CAMBIO CLAVE: antes solo se guardaban/restauraban 'token' y 'email',
-  // asi que el rol (y el tipo de entidad) se perdian en cada recarga de
-  // pagina -- un Analista que refrescara el navegador dejaba de ver
-  // "Ver Historial" aunque su sesion siguiera siendo valida. Ahora se
-  // persisten y restauran tambien 'role' y 'entityType'.
+  // Restaura la sesión al recargar. Se persisten token, email, rol y tipo de entidad
+  // (si no, un Analista que refrescara dejaría de ver "Historial").
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     const savedEmail = localStorage.getItem('email');
@@ -61,7 +65,6 @@ export function App() {
     setCurrentView('login');
   };
 
-  // El Analista (o cualquier rol) pulsa "Ver Historial" desde cualquiera de los dos simuladores
   const handleViewHistory = () => {
     if (currentView === 'bball' || currentView === 'tennis') {
       setPreviousSimulatorView(currentView);
@@ -74,7 +77,7 @@ export function App() {
   };
 
   return (
-    <div className="w-full min-h-screen">
+    <div className="ta-root">
       {!user ? (
         currentView === 'login' ? (
           <AuthScreen
