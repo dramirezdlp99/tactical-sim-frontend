@@ -7,7 +7,7 @@ import { MODES } from '../../components/public/RenderBadge';
  * ruta usa cada uno, por que, y como comprobarlo.
  */
 export const dynamic = 'force-static';
-export const metadata = { title: 'Mapa de renderizado', description: 'Qué patrón de renderizado usa cada ruta de TacticAI y por qué.' };
+export const metadata = { title: 'Mapa de renderizado', description: 'Qué patrón de renderizado usa cada ruta de TacticAI y por qué.' , alternates: { canonical: '/renderizado' } };
 
 const ROWS = [
   { mode: 'CSR', route: '/', why: 'La pizarra usa localStorage, IndexedDB, Web Workers, WebSocket y arrastre con el puntero: solo existen en el navegador.', check: 'Desactiva JavaScript y verás solo la pantalla de arranque.' },
