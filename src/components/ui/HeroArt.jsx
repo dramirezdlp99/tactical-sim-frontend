@@ -13,11 +13,11 @@ export const HeroArt = () => (
   <svg className="ta-hero-art" viewBox="0 0 800 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <defs>
       <radialGradient id="ha-heat"><stop offset="0" stopColor="#3ddc97" stopOpacity="0.55" /><stop offset="1" stopColor="#3ddc97" stopOpacity="0" /></radialGradient>
-      <linearGradient id="ha-fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#070a0f" stopOpacity="0" /><stop offset="0.75" stopColor="#070a0f" stopOpacity="0.85" /></linearGradient>
+      <linearGradient id="ha-fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--ta-hero-bg)" stopOpacity="0" /><stop offset="0.75" stopColor="var(--ta-hero-bg)" stopOpacity="0.85" /></linearGradient>
       <marker id="ha-ar" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 10 10"><path d="M0 0 L10 5 L0 10 L2.6 5 z" fill="#ff7a1a" /></marker>
     </defs>
     <g transform="translate(250 30) scale(1.1)">
-      <g fill="none" stroke="#fff" strokeOpacity="0.18" strokeWidth="2">
+      <g fill="none" stroke="var(--ta-hero-line)" strokeOpacity="0.18" strokeWidth="2">
         <rect x="0" y="0" width="500" height="470" />
         <rect x="170" y="0" width="160" height="190" />
         <path d="M190 190 A60 60 0 0 1 310 190" />
