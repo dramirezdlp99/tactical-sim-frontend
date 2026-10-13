@@ -10,7 +10,9 @@ import '../styles/tacticai.css';
 import '../styles/mirror.css';
 import '../styles/engine.css';
 import '../styles/public.css';
+import '../styles/theme.css';
 import PwaRegister from '../components/PwaRegister';
+import ThemeToggle from '../components/ThemeToggle';
 
 export const metadata = {
   title: { default: 'TacticAI · Simulador táctico deportivo', template: '%s · TacticAI' },
@@ -21,21 +23,27 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: '#080b10',
+  themeColor: '#f3f5f9',
   width: 'device-width',
   initialScale: 1,
 };
 
 /**
  * Layout raiz (SERVIDOR). Carga las tipografias y los estilos una sola vez para
- * todas las rutas y registra el Service Worker.
+ * todas las rutas, fija el tema (claro por defecto) y registra el Service Worker.
  * Guardar en: tactical-sim-frontend/src/app/layout.jsx
  */
+const THEME_INIT = `try{var t=localStorage.getItem('ta-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#080b10':'#f3f5f9');}catch(e){document.documentElement.setAttribute('data-theme','light');}`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="es">
+    <html lang="es" data-theme="light" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
       <body>
         {children}
+        <ThemeToggle floating />
         <PwaRegister />
       </body>
     </html>
