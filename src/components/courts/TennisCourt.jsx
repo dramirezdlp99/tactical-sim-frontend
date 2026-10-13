@@ -108,7 +108,7 @@ const Token = ({ pos, label, tag, kind, dragging, bind }) => {
   );
 };
 
-export const TennisCourt = ({ positions, result, surface, showHeat, showVectors, showRival, drag, serverName, receiverName }) => {
+export const TennisCourt = ({ positions, result, surface, showHeat, showVectors, showRival, drag, serverName, receiverName, liveHeat }) => {
   const server = tnToScreen(positions.alcaraz);
   const target = tnToScreen(positions.ball);
   const returner = tnToScreen(positions.sinner);
@@ -130,6 +130,11 @@ export const TennisCourt = ({ positions, result, surface, showHeat, showVectors,
         <marker id="ta-tn-ar" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 10 10"><path d="M0 0 L10 5 L0 10 L2.6 5 z" fill="#c8f03c" /></marker>
       </defs>
       <CourtLines surface={surface} />
+
+      {/* Zonas que el restador no alcanza, calculadas en vivo por los Web Workers (sin internet) */}
+      {liveHeat?.url && (
+        <image className="ta-live-heat" href={liveHeat.url} x="0" y="0" width="780" height="270" preserveAspectRatio="none" opacity="0.85" pointerEvents="none" />
+      )}
 
       {showHeat && result && (
         <g className="ta-ghost" pointerEvents="none">
