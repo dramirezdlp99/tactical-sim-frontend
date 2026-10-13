@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-10-12T00:00:00+00:00",
+  "models": {
+    "basketball": {
+      "available": true,
+      "version": "v1",
+      "model_type": "logistic_regression",
+      "data_source": "synthetic",
+      "synthetic_data_warning": "DATOS SINTETICOS: este modelo se entreno con partidos simulados generados por reglas de dominio (app/ml/dataset.py), no con partidos reales. Sus probabilidades son una estimacion didactica, no una medicion de rendimiento real.",
+      "n_samples": 80000,
+      "trained_at": "2026-10-12",
+      "description": "Regresion logistica v1 entrenada con 80.000 posesiones sinteticas · AUC tiro 0.61, pase 0.81, penetracion 0.63",
+      "heads": {
+        "shot": {
+          "n_features": 15,
+          "n_train": 64000,
+          "n_valid": 16000,
+          "base_rate": 0.32878125,
+          "auc": 0.6139179446568575,
+          "auc_baseline": 0.5,
+          "auc_ceiling_synthetic": 0.6144467118690546,
+          "log_loss": 0.6171385353088065,
+          "brier": 0.214138974777854,
+          "ece": 0.00763586216762571
+        },
+        "pass": {
+          "n_features": 12,
+          "n_train": 64000,
+          "n_valid": 16000,
+          "base_rate": 0.6353125,
+          "auc": 0.8051906410709913,
+          "auc_baseline": 0.5,
+          "auc_ceiling_synthetic": 0.8107861520774945,
+          "log_loss": 0.5058397023428156,
+          "brier": 0.16985366744107386,
+          "ece": 0.009408829583217232
+        },
+        "drive": {
+          "n_features": 10,
+          "n_train": 64000,
+          "n_valid": 16000,
+          "base_rate": 0.3146875,
+          "auc": 0.6314169432555498,
+          "auc_baseline": 0.5,
+          "auc_ceiling_synthetic": 0.6342463349055348,
+          "log_loss": 0.6004760135221623,
+          "brier": 0.20612862982860763,
+          "ece": 0.007610921847340574
+        }
+      }
+    },
+    "tennis": {
+      "available": true,
+      "version": "v1",
+      "model_type": "logistic_regression",
+      "data_source": "synthetic",
+      "synthetic_data_warning": "DATOS SINTETICOS: este modelo se entreno con partidos simulados generados por reglas de dominio (app/ml/dataset.py), no con partidos reales. Sus probabilidades son una estimacion didactica, no una medicion de rendimiento real.",
+      "n_samples": 80000,
+      "trained_at": "2026-10-12",
+      "description": "Regresion logistica v1 entrenada con 80.000 saques sinteticos · AUC 0.64",
+      "heads": {
+        "serve": {
+          "n_features": 13,
+          "n_train": 64000,
+          "n_valid": 16000,
+          "base_rate": 0.661453125,
+          "auc": 0.6351647346043932,
+          "auc_baseline": 0.5,
+          "auc_ceiling_synthetic": 0.6411545588028196,
+          "log_loss": 0.6183873556636029,
+          "brier": 0.21435845358297057,
+          "ece": 0.0070243274686984224
+        }
+      }
+    }
+  }
+}
