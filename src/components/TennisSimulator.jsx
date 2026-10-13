@@ -11,7 +11,9 @@ import { Card, Gauge, Meter, Toggle } from './ui/Widgets';
 import { PlayLibrary } from './ui/PlayLibrary';
 import { LocalBoards } from './ui/LocalBoards';
 import { MirrorPanel } from './ui/MirrorPanel';
+import { LocalLab } from './ui/LocalLab';
 import { useMirrorEmitter } from './useMirrorEmitter';
+import { useSpaceEngine } from '../engine/useSpaceEngine';
 import { humanizeAction, toPct } from './ui/format';
 import { TennisCourt, SURFACE_OPTIONS, tnToPercent, tnClamp } from './courts/TennisCourt';
 
@@ -35,6 +37,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
   const [showRival, setShowRival] = useState(true);
+  const [showLive, setShowLive] = useState(true);
 
   const [selectedPlayId, setSelectedPlayId] = useState('custom');
   const selectedPlay = useMemo(() => getPlayById(TENNIS_PLAYS, selectedPlayId), [selectedPlayId]);
@@ -47,6 +50,9 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
   const [saveStatus, setSaveStatus] = useState('');
   const isCoach = user?.role === 'ROLE_COACH' || user?.role === 'ROLE_ADMIN';
   const isOnline = useOnlineStatus();
+
+  // Laboratorio local: Web Workers + memoria compartida, recalcula mientras arrastras y funciona sin internet.
+  const lab = useSpaceEngine('TENNIS', positions);
 
   // Duplicación de pantalla en tiempo real: cada cambio de la pizarra se emite al proyector.
   const mirror = useMirrorEmitter({ token: user?.token || localStorage.getItem('token') });
@@ -170,6 +176,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
               )}
             </Card>
             <LocalBoards boards={localBoards} isOnline={isOnline} />
+            <LocalLab sport="TENNIS" lab={lab} />
           </div>
 
           <div className="ta-stage">
@@ -201,6 +208,7 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
                 positions={positions} result={result} surface={surface}
                 showHeat={showHeatmap} showVectors={showVectors} showRival={showRival}
                 drag={drag} serverName={match.server} receiverName={match.receiver}
+                liveHeat={showLive ? lab.heat : null}
               />
               {loading && <div className="ta-scan" />}
             </div>
@@ -261,7 +269,8 @@ export const TennisSimulator = ({ user, onLogout, onSwitchToBasketball, onViewHi
             )}
 
             <Card title="Capas de la cancha" icon="layers">
-              <Toggle label="Zona de impacto (calor)" checked={showHeatmap} onChange={setShowHeatmap} />
+              <Toggle label="Zonas inalcanzables en vivo (local)" checked={showLive} onChange={setShowLive} />
+              <Toggle label="Zona de impacto (motor de IA)" checked={showHeatmap} onChange={setShowHeatmap} />
               <Toggle label="Trayectoria del saque" checked={showVectors} onChange={setShowVectors} />
               <Toggle label="Anticipación del restador" checked={showRival} onChange={setShowRival} />
             </Card>
