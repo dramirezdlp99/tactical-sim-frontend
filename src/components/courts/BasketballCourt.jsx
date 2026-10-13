@@ -189,7 +189,7 @@ const Token = ({ id, pos, kind, dragging, bind, isHolder }) => {
   );
 };
 
-export const BasketballCourt = ({ positions, result, showHeat, showVectors, showRival, drag }) => {
+export const BasketballCourt = ({ positions, result, showHeat, showVectors, showRival, drag, liveHeat }) => {
   const holderKey = useMemo(() => nearestOffense(positions), [positions]);
   const heat = result?.heat_map_coords || [];
   const ghosts = result?.predicted_defense || [];
@@ -204,6 +204,11 @@ export const BasketballCourt = ({ positions, result, showHeat, showVectors, show
         <Arrow id="ta-ar" color="#ff7a1a" />
       </defs>
       <Court />
+
+      {/* Espacio libre rentable calculado en vivo por los Web Workers (funciona sin internet) */}
+      {liveHeat?.url && (
+        <image className="ta-live-heat" href={liveHeat.url} x="0" y="0" width="500" height="470" preserveAspectRatio="none" opacity="0.85" pointerEvents="none" />
+      )}
 
       {showHeat && heat.length > 0 && (
         <g className="ta-ghost" pointerEvents="none">
