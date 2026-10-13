@@ -23,7 +23,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }) {
   const { id } = await params;
   const play = ALL.find((p) => p.id === id);
-  return play ? { title: play.name, description: play.description } : {};
+  return play ? { title: play.name, description: play.description, alternates: { canonical: `/jugadas/${id}` } } : {};
 }
 
 const LABELS = {
