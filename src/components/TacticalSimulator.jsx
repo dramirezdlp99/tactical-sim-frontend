@@ -12,7 +12,9 @@ import { Card, Gauge, Meter, Toggle } from './ui/Widgets';
 import { PlayLibrary } from './ui/PlayLibrary';
 import { LocalBoards } from './ui/LocalBoards';
 import { MirrorPanel } from './ui/MirrorPanel';
+import { LocalLab } from './ui/LocalLab';
 import { useMirrorEmitter } from './useMirrorEmitter';
+import { useSpaceEngine } from '../engine/useSpaceEngine';
 import { humanizeAction, toPct } from './ui/format';
 import { BasketballCourt, bbToPercent, bbClamp, BB_BALL_OFFSET, BB_SCALE } from './courts/BasketballCourt';
 
@@ -27,6 +29,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
   const [showRival, setShowRival] = useState(true);
+  const [showLive, setShowLive] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -42,6 +45,9 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
   const [saveStatus, setSaveStatus] = useState(''); // '', 'saving', 'saved', 'error'
   const isCoach = user?.role === 'ROLE_COACH' || user?.role === 'ROLE_ADMIN';
   const isOnline = useOnlineStatus();
+
+  // Laboratorio local: Web Workers + memoria compartida, recalcula mientras arrastras y funciona sin internet.
+  const lab = useSpaceEngine('BASKETBALL', positions);
 
   // Duplicación de pantalla en tiempo real: cada cambio de la pizarra se emite al proyector.
   const mirror = useMirrorEmitter({ token: user?.token || localStorage.getItem('token') });
@@ -179,6 +185,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
               )}
             </Card>
             <LocalBoards boards={localBoards} isOnline={isOnline} />
+            <LocalLab sport="BASKETBALL" lab={lab} />
           </div>
 
           {/* ---------- Centro: la cancha ---------- */}
@@ -199,7 +206,7 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
               <BasketballCourt
                 positions={positions} result={result}
                 showHeat={showHeatmap} showVectors={showVectors} showRival={showRival}
-                drag={drag}
+                drag={drag} liveHeat={showLive ? lab.heat : null}
               />
               {loading && <div className="ta-scan" />}
             </div>
@@ -283,7 +290,8 @@ export const TacticalSimulator = ({ user, onLogout, onSwitchToTennis, onViewHist
             </Card>
 
             <Card title="Capas de la cancha" icon="layers">
-              <Toggle label="Mapa de calor (espacio libre)" checked={showHeatmap} onChange={setShowHeatmap} />
+              <Toggle label="Espacio libre en vivo (local)" checked={showLive} onChange={setShowLive} />
+              <Toggle label="Mapa de calor del motor de IA" checked={showHeatmap} onChange={setShowHeatmap} />
               <Toggle label="Acción recomendada" checked={showVectors} onChange={setShowVectors} />
               <Toggle label="Reacción de la defensa rival" checked={showRival} onChange={setShowRival} />
             </Card>
