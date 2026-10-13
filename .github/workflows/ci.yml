@@ -1,0 +1,29 @@
+name: CI frontend
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  pruebas-y-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Pruebas unitarias (vitest)
+        run: npm test
+      - name: Build de produccion (Next.js)
+        run: npm run build
+      - name: Auditoria de dependencias
+        run: npm audit --audit-level=high
