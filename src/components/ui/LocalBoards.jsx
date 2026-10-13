@@ -1,6 +1,8 @@
 import React from 'react';
 import { Icon } from './Icon';
 import { Card } from './Widgets';
+import { usePwa } from '../../pwa/usePwa';
+import '../../styles/engine.css';
 
 /**
  * LocalBoards
@@ -9,7 +11,9 @@ import { Card } from './Widgets';
  *
  * Guardar en: tactical-sim-frontend/src/components/ui/LocalBoards.jsx
  */
-export const LocalBoards = ({ boards, isOnline }) => (
+export const LocalBoards = ({ boards, isOnline }) => {
+  const pwa = usePwa();
+  return (
   <Card
     title="Maletín offline"
     icon="save"
@@ -51,5 +55,22 @@ export const LocalBoards = ({ boards, isOnline }) => (
         ))}
       </ul>
     )}
+
+    <div className="ta-pwa" data-ready={pwa.offlineReady ? 'true' : 'false'}>
+      <span className="ta-pwa-state">
+        <Icon name={pwa.offlineReady ? 'check' : isOnline ? 'download' : 'wifioff'} />
+        <span>
+          {pwa.offlineReady
+            ? <><b>App disponible sin conexión</b> en este dispositivo</>
+            : pwa.supported
+              ? 'Preparando la app para usarla sin conexión…'
+              : 'Sin conexión solo funciona tras abrir la app en producción'}
+        </span>
+      </span>
+      {pwa.canInstall && (
+        <button type="button" className="ta-btn" onClick={pwa.install}><Icon name="download" /> Instalar</button>
+      )}
+    </div>
   </Card>
-);
+  );
+};
