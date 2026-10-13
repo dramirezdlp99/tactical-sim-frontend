@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Brand } from '../ui/Shell';
 import { PublicNav } from './PublicNav';
 import { RenderBadge } from './RenderBadge';
+import ThemeToggle from '../ThemeToggle';
 
 /**
  * PublicShell (componente de SERVIDOR): marco comun de las paginas publicas
@@ -15,6 +16,7 @@ export function PublicShell({ children }) {
       <header className="ta-pub-top">
         <Link href="/" className="ta-pub-brand" aria-label="TacticAI, ir a la aplicación"><Brand /></Link>
         <PublicNav />
+        <ThemeToggle />
       </header>
       <main className="ta-pub-main">{children}</main>
       <footer className="ta-pub-foot">
