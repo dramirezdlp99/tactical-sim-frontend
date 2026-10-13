@@ -97,3 +97,29 @@ El analista emite su pizarra por WebSocket (`/ws/mirror`) a una sala con código
 | Frontend | vitest: matemática del laboratorio (determinismo, franjas = un hilo), motor sin Workers, IndexedDB (fake-indexeddb), jugadas, formato, `timedFetch` | Node 20 y 22: `npm test`, `npm run build`, `npm audit` |
 | IA | pytest: simulación, modelo entrenado, respuesta defensiva, `/api/v1/model/info` | Python 3.11 |
 | Backend | JUnit: controlador y WebSocket del espejo (sin base de datos) | JDK 21: `mvn test` |
+
+## 9. SEO técnico
+
+Se entiende como código limpio y estructurado para que los buscadores puedan leer y posicionar el sitio:
+
+- **Metadatos por ruta** (`export const metadata` / `generateMetadata`): título con plantilla `… · TacticAI`, descripción y `canonical` propios; `lang="es"` en `<html>`.
+- **Open Graph y Twitter Card** en el layout, para vistas previas al compartir el enlace.
+- **Datos estructurados JSON-LD** (`schema.org/WebApplication`) en el layout.
+- **`/sitemap.xml` y `/robots.txt`** generados por Next (`src/app/sitemap.js`, `robots.js`); el sitemap lista las rutas públicas y cada jugada.
+- **HTML semántico** en las páginas públicas: un único `h1`, `header`, `nav` con `aria-label`, `main`, `footer`.
+- **Renderizado en el servidor:** las páginas públicas (SSG/ISR/SSR/Streaming) entregan el contenido ya en el HTML, que es lo que leen los buscadores.
+- **Límite conocido:** `/` es CSR a propósito (necesita sesión y APIs del navegador), así que su contenido no se indexa; es la compensación del patrón CSR.
+
+La URL base sale de `NEXT_PUBLIC_SITE_URL` (opcional) o de la variable que Vercel define sola (`VERCEL_PROJECT_PRODUCTION_URL`).
+
+## 10. Mapa por capas
+
+| Capa | En TacticAI | Dónde |
+|---|---|---|
+| Cliente | Next.js/React, PWA, Web Workers. No contiene reglas de negocio ni credenciales. | `tactical-sim-frontend` (Vercel) |
+| Borde / gateway | Módulo `gateway` del backend: autenticación JWT con 2FA, CORS por lista de orígenes, rutas públicas explícitas y todo lo demás bajo autenticación. El navegador no conoce la URL del motor de IA. | `tactical-sim-backend` |
+| Aplicación | API REST `/api/v1/*`, variables de entorno para toda configuración sensible, módulos separados (usuarios, simulación, espejo). | `tactical-sim-backend` |
+| Asíncrona | Web Workers en el cliente para el cálculo pesado; relevo WebSocket del espejo; hilo secundario en el motor de IA para no bloquear el *event loop*. No hay broker de mensajes (ver límites). | frontend, backend, IA |
+| IA | Servicio FastAPI independiente, «detrás» del backend: la simulación exige una clave interna (`AI_INTERNAL_KEY` ↔ cabecera `X-Internal-Key`). | `tactical-sim-ai-engine` |
+| Datos | Postgres (Neon). Solo el backend accede; el frontend nunca habla con la base de datos. | backend + Neon |
+| DevOps | GitHub Actions (CI en los tres repos), `Dockerfile` del backend, despliegue en Render y Vercel. | los tres repos |
