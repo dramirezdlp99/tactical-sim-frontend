@@ -14,7 +14,7 @@ import snapshot from '../../data/model-snapshot.json';
  * sola cuando llega su dato (sin esperar a la mas lenta).
  */
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Plataforma en vivo', description: 'Estado de la plataforma, enviado por partes.' };
+export const metadata = { title: 'Plataforma en vivo', description: 'Estado de la plataforma, enviado por partes.' , alternates: { canonical: '/plataforma' } };
 
 async function BackendCard({ t0 }) {
   const r = await timedFetch(`${BACKEND_SERVER_URL}/actuator/health`, { timeoutMs: 15000 });
