@@ -1,0 +1,97 @@
+/**
+ * theme.css — modo claro (por defecto) y modo oscuro.
+ * Se carga DESPUES de los demas estilos. El modo oscuro es el diseno original
+ * (variables de tacticai.css); el modo claro redefine las mismas variables y
+ * ajusta los pocos colores que estaban escritos a mano.
+ * El modo lo fija el atributo data-theme de <html> (ver ThemeToggle.jsx).
+ *
+ * Guardar en: tactical-sim-frontend/src/styles/theme.css
+ */
+
+/* ---------- MODO CLARO (por defecto) ---------- */
+:root:not([data-theme='dark']) {
+  color-scheme: light;
+  --ta-bg: #f3f5f9;
+  --ta-bg-2: #eaeef4;
+  --ta-panel: #ffffff;
+  --ta-panel-2: #f1f4f9;
+  --ta-line: #cfd7e3;
+  --ta-line-soft: #e1e6ee;
+  --ta-text: #131a26;
+  --ta-mute: #4d5b70;
+  --ta-dim: #76839a;
+  --ta-ok: #0b8a57;
+  --ta-warn: #a85f00;
+  --ta-danger: #c8243a;
+  --ta-blue: #2a56e0;
+  --ta-accent: #e8650a;
+  --ta-accent-ink: #ffffff;
+  --ta-accent-soft: rgba(232, 101, 10, 0.1);
+  --ta-accent-line: rgba(232, 101, 10, 0.45);
+}
+:root:not([data-theme='dark']) .ta-app[data-sport='TENNIS'] {
+  --ta-accent: #577f00;
+  --ta-accent-ink: #ffffff;
+  --ta-accent-soft: rgba(87, 127, 0, 0.12);
+  --ta-accent-line: rgba(87, 127, 0, 0.45);
+}
+
+:root:not([data-theme='dark']) .ta-app {
+  background:
+    radial-gradient(1100px 520px at 12% -10%, var(--ta-accent-soft), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(42, 86, 224, 0.06), transparent 60%),
+    var(--ta-bg);
+}
+:root:not([data-theme='dark']) .ta-top { background: rgba(255, 255, 255, 0.86); }
+:root:not([data-theme='dark']) .ta-pub-top { background: rgba(255, 255, 255, 0.9); }
+:root:not([data-theme='dark']) .ta-notice.warn { color: var(--ta-warn); background: rgba(168, 95, 0, 0.08); border-color: rgba(168, 95, 0, 0.35); }
+:root:not([data-theme='dark']) .ta-notice.err { color: var(--ta-danger); background: rgba(200, 36, 58, 0.07); border-color: rgba(200, 36, 58, 0.35); }
+:root:not([data-theme='dark']) .ta-mini { background: #e6ecf4; }
+:root:not([data-theme='dark']) .ta-stage {
+  background: linear-gradient(180deg, #ffffff, #eef2f8);
+  box-shadow: 0 24px 60px -36px rgba(19, 26, 38, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+:root:not([data-theme='dark']) .ta-court-wrap { background: #dde4ee; }
+:root:not([data-theme='dark']) .ta-rival b { color: var(--ta-danger); }
+:root:not([data-theme='dark']) .ta-table tbody tr:hover { background: rgba(19, 26, 38, 0.04); }
+:root:not([data-theme='dark']) .ta-tag.bb { color: #a94300; background: rgba(232, 101, 10, 0.12); }
+:root:not([data-theme='dark']) .ta-tag.tn { color: #3f5f00; background: rgba(87, 127, 0, 0.14); }
+:root:not([data-theme='dark']) .ta-modal-back { background: rgba(19, 26, 38, 0.45); }
+:root:not([data-theme='dark']) .ta-modal { background: #ffffff; box-shadow: 0 40px 100px -30px rgba(19, 26, 38, 0.45); }
+:root:not([data-theme='dark']) .ta-viewer { background: var(--ta-bg); }
+:root:not([data-theme='dark']) .ta-viewer-bar { background: var(--ta-panel); }
+:root:not([data-theme='dark']) .ta-pub-callout { color: var(--ta-warn); }
+:root:not([data-theme='dark']) .ta-auc b { background: var(--ta-text); }
+:root:not([data-theme='dark']) .ta-lab-mode[data-tone='ok'] { background: rgba(11, 138, 87, 0.1); border-color: rgba(11, 138, 87, 0.4); }
+:root:not([data-theme='dark']) .ta-lab-mode[data-tone='warn'] { background: rgba(168, 95, 0, 0.1); border-color: rgba(168, 95, 0, 0.4); }
+
+/* Portada de acceso: oscura en modo oscuro, clara en modo claro. */
+.ta-auth-hero { --ta-hero-bg: #070a0f; --ta-hero-line: #ffffff; }
+:root:not([data-theme='dark']) .ta-auth-hero {
+  --ta-hero-bg: #eef2f9; --ta-hero-line: #1b2a44;
+  background:
+    radial-gradient(900px 600px at 20% 30%, rgba(232, 101, 10, 0.13), transparent 60%),
+    radial-gradient(700px 500px at 90% 90%, rgba(42, 86, 224, 0.12), transparent 60%),
+    #eef2f9;
+}
+:root:not([data-theme='dark']) .ta-auth-hero::after {
+  background: linear-gradient(90deg, rgba(238, 242, 249, 0.94) 0%, rgba(238, 242, 249, 0.62) 45%, transparent 80%);
+}
+:root:not([data-theme='dark']) .ta-court-bg { fill: #dde4ee; }
+
+/* ---------- MODO OSCURO: el diseno original ---------- */
+:root[data-theme='dark'] { color-scheme: dark; }
+
+/* ---------- Boton de tema ---------- */
+.ta-theme-btn {
+  display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; cursor: pointer;
+  border-radius: 10px; border: 1px solid var(--ta-line); background: var(--ta-panel-2); color: var(--ta-text);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.ta-theme-btn:hover { border-color: var(--ta-dim); transform: translateY(-1px); }
+.ta-theme-btn:focus-visible { outline: 2px solid var(--ta-accent); outline-offset: 2px; }
+.ta-theme-btn svg { width: 19px; height: 19px; }
+.ta-theme-float { position: fixed; top: 14px; right: 14px; z-index: 90; box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.45); }
+body:has(.ta-top) .ta-theme-float,
+body:has(.ta-pub-top) .ta-theme-float { display: none; }
+:root:not([data-theme='dark']) .ta-legend i { outline: 1px solid rgba(19, 26, 38, 0.3); }
