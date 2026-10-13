@@ -1,12 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import '@fontsource/barlow-condensed/600.css';
-import '@fontsource/barlow-condensed/700.css';
-import '@fontsource/barlow-condensed/800.css';
-import '@fontsource/barlow/400.css';
-import '@fontsource/barlow/500.css';
-import '@fontsource/barlow/600.css';
-import '@fontsource/jetbrains-mono/400.css';
-import './styles/tacticai.css';
 import { AuthScreen } from './components/AuthScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { TacticalSimulator } from './components/TacticalSimulator';
