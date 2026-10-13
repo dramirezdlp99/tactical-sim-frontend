@@ -74,7 +74,7 @@ const Court = () => (
     </defs>
 
     {/* zona fuera de juego */}
-    <rect x="-26" y="-26" width="552" height="552" fill="#0d131b" />
+    <rect className="ta-court-bg" x="-26" y="-26" width="552" height="552" fill="#0d131b" />
     <rect x="-8" y="-8" width="516" height="486" rx="3" fill="#7b5a36" />
     {/* parquet */}
     <rect x="0" y="0" width="500" height="470" fill="url(#ta-wood)" />
