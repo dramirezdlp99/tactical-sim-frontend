@@ -18,7 +18,7 @@
  *
  * Para publicar una version nueva basta con cambiar VERSION.
  * ========================================================================== */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `tacticai-shell-${VERSION}`;
 const IMMUTABLE = `tacticai-immutable-${VERSION}`;
 const RUNTIME = `tacticai-runtime-${VERSION}`;
