@@ -8,7 +8,7 @@ import { BASKETBALL_PLAYS, TENNIS_PLAYS } from '../../components/predefinedPlays
  * publicar una version nueva, asi que se genera al compilar.
  */
 export const dynamic = 'force-static';
-export const metadata = { title: 'Libro de jugadas', description: 'Jugadas predefinidas de baloncesto y tenis.' };
+export const metadata = { title: 'Libro de jugadas', description: 'Jugadas predefinidas de baloncesto y tenis.' , alternates: { canonical: '/jugadas' } };
 
 function PlayCard({ play, sport }) {
   return (
