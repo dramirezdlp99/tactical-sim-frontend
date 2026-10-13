@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from './Icon';
+import Link from 'next/link';
 import ThemeToggle from '../ThemeToggle';
 
 /**
@@ -61,6 +62,9 @@ export const TopBar = ({ user, isOnline = true, sport, onBasketball, onTennis, o
       <span className="ta-dot" />
       {isOnline ? 'MOTOR IA EN LÍNEA' : 'MODO CAMPO · SIN RED'}
     </span>
+    <Link href="/renderizado" className="ta-btn ta-hide-sm" title="Arquitectura, metodología, modelo y estado del sistema">
+      <Icon name="layers" /> Arquitectura
+    </Link>
     {user?.role === 'ROLE_ANALYST' && onViewHistory && (
       <button type="button" className="ta-btn ta-hide-sm" onClick={onViewHistory}>
         <Icon name="chart" /> Historial
