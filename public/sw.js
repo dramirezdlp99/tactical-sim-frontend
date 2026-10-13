@@ -8,7 +8,8 @@
  *
  * Estrategias:
  *   - Navegacion (HTML): red primero con limite de 4 s; si falla, la copia
- *     guardada; si no hay copia, /offline.html.
+ *     guardada de esa pagina; la raiz cae a la copia de la aplicacion; el resto
+ *     de paginas sin copia muestran /offline.html.
  *   - Archivos con hash (/assets/, /_next/static/): copia primero (nunca cambian).
  *   - Resto del mismo origen (iconos, manifiesto): copia y se refresca en segundo plano.
  *   - NUNCA se intercepta otro origen: el backend (API/WebSocket) y el motor de IA
@@ -17,7 +18,7 @@
  *
  * Para publicar una version nueva basta con cambiar VERSION.
  * ========================================================================== */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `tacticai-shell-${VERSION}`;
 const IMMUTABLE = `tacticai-immutable-${VERSION}`;
 const RUNTIME = `tacticai-runtime-${VERSION}`;
@@ -58,9 +59,14 @@ async function networkFirstNavigation(request) {
     return response;
   } catch (err) {
     const url = new URL(request.url);
+    const exact = await cache.match(url.origin + url.pathname);
+    if (exact) return exact;
+    // Solo la raiz puede caer a la copia de la aplicacion; una pagina publica que nunca se visito no.
+    if (url.pathname === '/') {
+      const shell = await cache.match('/');
+      if (shell) return shell;
+    }
     return (
-      (await cache.match(url.origin + url.pathname)) ||
-      (await cache.match('/')) ||
       (await cache.match('/offline.html')) ||
       new Response('Sin conexion', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
     );
@@ -91,6 +97,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;      // backend / IA / WebSocket: siempre a la red
   if (url.pathname === '/sw.js') return;
+  // Next.js: datos de React Server Components, imagenes optimizadas y API: siempre a la red.
+  if (request.headers.get('RSC') || url.searchParams.has('_rsc') || url.pathname.startsWith('/_next/image') || url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirstNavigation(request));
