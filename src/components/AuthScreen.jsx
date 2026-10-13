@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BACKEND_URL } from './apiConfig';
 import { Icon } from './ui/Icon';
+import Link from 'next/link';
 import { Brand } from './ui/Shell';
 import { HeroArt } from './ui/HeroArt';
 
@@ -213,6 +214,12 @@ export const AuthScreen = ({ onLoginSuccess, onSwitchToRegister }) => {
                 <button type="button" onClick={onSwitchToRegister} className="ta-link">
                   Solicitar alta enterprise <Icon name="arrowright" />
                 </button>
+              </div>
+              <div className="ta-links" style={{ marginTop: 10 }}>
+                <span>¿Quieres conocer el proyecto?</span>
+                <Link href="/renderizado" className="ta-link">
+                  Ver arquitectura y modelo <Icon name="arrowright" />
+                </Link>
               </div>
             </>
           )}
