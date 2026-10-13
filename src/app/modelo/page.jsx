@@ -15,7 +15,7 @@ import snapshot from '../../data/model-snapshot.json';
  * instantanea incluida en la compilacion y la pagina lo dice claramente.
  */
 export const revalidate = 300;
-export const metadata = { title: 'Modelo predictivo', description: 'Métricas de validación del modelo entrenado de TacticAI.' };
+export const metadata = { title: 'Modelo predictivo', description: 'Métricas de validación del modelo entrenado de TacticAI.' , alternates: { canonical: '/modelo' } };
 
 async function loadModel() {
   const r = await timedFetch(`${AI_ENGINE_URL}/api/v1/model/info`, { timeoutMs: 8000, init: { next: { revalidate: 300 } } });
