@@ -1,0 +1,46 @@
+/* ==========================================================================
+   Laboratorio local (Workers + memoria compartida) y estado PWA/offline.
+   Mismo sistema de diseno que tacticai.css (prefijo ta-).
+   Guardar en: tactical-sim-frontend/src/styles/engine.css
+   ========================================================================== */
+
+.ta-lab-mode[data-tone='ok'] { color: var(--ta-ok); border-color: rgba(61, 220, 151, 0.4); background: rgba(61, 220, 151, 0.1); }
+.ta-lab-mode[data-tone='warn'] { color: var(--ta-warn); border-color: rgba(255, 176, 32, 0.4); background: rgba(255, 176, 32, 0.1); }
+
+.ta-lab-mode-line {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; color: var(--ta-mute);
+  padding: 8px 10px; border-radius: 10px;
+  background: var(--ta-bg-2); border: 1px solid var(--ta-line-soft);
+}
+.ta-lab-mode-line[data-tone='ok'] .ta-icon { color: var(--ta-ok); }
+.ta-lab-mode-line[data-tone='warn'] .ta-icon { color: var(--ta-warn); }
+.ta-lab-mode-line b { color: var(--ta-text); font-weight: 600; }
+.ta-lab-note { margin: 8px 0 0; font-size: 11.5px; }
+
+.ta-lab-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+.ta-bench {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-top: 12px; padding: 12px; border-radius: 12px;
+  background: var(--ta-bg-2); border: 1px solid var(--ta-line-soft);
+}
+.ta-bench div { display: flex; flex-direction: column; gap: 2px; }
+.ta-bench span { font-size: 11px; color: var(--ta-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+.ta-bench b { font-family: var(--ta-font-display); font-size: 22px; font-weight: 700; color: var(--ta-text); }
+.ta-bench small { grid-column: 1 / -1; font-family: var(--ta-font-mono); font-size: 10px; color: var(--ta-dim); line-height: 1.5; }
+
+.ta-live-heat { transition: opacity 0.2s ease; }
+
+/* Estado de la app instalable / disponible sin conexion */
+.ta-pwa {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+  background: var(--ta-bg-2); border: 1px solid var(--ta-line-soft);
+  font-size: 12.5px; color: var(--ta-mute);
+}
+.ta-pwa-state { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ta-pwa-state .ta-icon { flex-shrink: 0; }
+.ta-pwa[data-ready='true'] .ta-pwa-state .ta-icon { color: var(--ta-ok); }
+.ta-pwa[data-ready='false'] .ta-pwa-state .ta-icon { color: var(--ta-dim); }
+.ta-pwa b { color: var(--ta-text); font-weight: 600; }
