@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from './Icon';
+import ThemeToggle from '../ThemeToggle';
 
 /**
  * Shell.jsx
@@ -65,6 +66,7 @@ export const TopBar = ({ user, isOnline = true, sport, onBasketball, onTennis, o
         <Icon name="chart" /> Historial
       </button>
     )}
+    <ThemeToggle />
     <div className="ta-user">
       <div className="ta-avatar">{user?.email?.charAt(0).toUpperCase() || 'A'}</div>
       <span className="ta-user-mail">{user?.email}</span>
