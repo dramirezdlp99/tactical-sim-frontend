@@ -6,7 +6,7 @@ import AppClient from '../components/AppClient';
  * simuladores, historial, proyector ?viewer=CODIGO) se dibuja en el navegador.
  * Guardar en: tactical-sim-frontend/src/app/page.jsx
  */
-export const metadata = { title: 'Simulador táctico' };
+export const metadata = { title: 'Simulador táctico', alternates: { canonical: '/' } };
 
 export default function Home() {
   return <AppClient />;
