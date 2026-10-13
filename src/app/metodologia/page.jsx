@@ -7,7 +7,7 @@ import { Icon } from '../../components/ui/Icon';
  * sirve como HTML ya hecho (lo mas rapido posible, sin trabajo del servidor).
  */
 export const dynamic = 'force-static';
-export const metadata = { title: 'Metodología', description: 'Cómo calcula TacticAI la probabilidad de éxito de una jugada.' };
+export const metadata = { title: 'Metodología', description: 'Cómo calcula TacticAI la probabilidad de éxito de una jugada.' , alternates: { canonical: '/metodologia' } };
 
 const STEPS = [
   { icon: 'whistle', title: 'Dibujas la jugada', text: 'Posicionas a los 5 atacantes, los 5 defensores y el balón (o sacador, restador y punto de caída en tenis) sobre una cancha a escala real.' },
