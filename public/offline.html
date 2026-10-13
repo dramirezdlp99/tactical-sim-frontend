@@ -3,17 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#080b10" />
+  <meta name="theme-color" content="#f3f5f9" />
+  <script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('ta-theme')==='dark'?'dark':'light')}catch(e){}</script>
   <title>TacticAI · Sin conexión</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #080b10; color: #eaeef5; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    html, body { margin: 0; height: 100%; background: #f3f5f9; color: #131a26; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
     main { min-height: 100%; display: grid; place-items: center; padding: 24px; box-sizing: border-box; }
     .box { max-width: 460px; text-align: center; }
-    .badge { display: inline-block; font: 700 12px/1 ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: #ffb020; background: rgba(255,176,32,.1); border: 1px solid rgba(255,176,32,.4); border-radius: 999px; padding: 8px 14px; }
+    .badge { display: inline-block; font: 700 12px/1 ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: #a85f00; background: rgba(168,95,0,.1); border: 1px solid rgba(168,95,0,.4); border-radius: 999px; padding: 8px 14px; }
     h1 { font-size: 34px; margin: 22px 0 10px; letter-spacing: .02em; }
-    h1 b { color: #ff7a1a; }
-    p { color: #8e9bb0; line-height: 1.6; margin: 0 0 22px; }
-    button { font: 600 15px system-ui, sans-serif; color: #1a0d00; background: #ff7a1a; border: 0; border-radius: 10px; padding: 12px 22px; cursor: pointer; }
+    h1 b { color: #e8650a; }
+    p { color: #4d5b70; line-height: 1.6; margin: 0 0 22px; }
+    button { font: 600 15px system-ui, sans-serif; color: #fff; background: #e8650a; border: 0; border-radius: 10px; padding: 12px 22px; cursor: pointer; }
+    html[data-theme='dark'], html[data-theme='dark'] body { background: #080b10; color: #eaeef5; }
+    html[data-theme='dark'] .badge { color: #ffb020; background: rgba(255,176,32,.1); border-color: rgba(255,176,32,.4); }
+    html[data-theme='dark'] h1 b { color: #ff7a1a; }
+    html[data-theme='dark'] p { color: #8e9bb0; }
+    html[data-theme='dark'] button { color: #1a0d00; background: #ff7a1a; }
   </style>
 </head>
 <body>
