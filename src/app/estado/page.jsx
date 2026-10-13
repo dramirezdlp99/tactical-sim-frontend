@@ -10,7 +10,7 @@ import { AI_ENGINE_URL, BACKEND_SERVER_URL } from '../../lib/serverConfig';
  * Por eso la hora cambia en cada recarga y siempre ves datos frescos.
  */
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Estado de los servicios', description: 'Estado en tiempo real del backend y del motor de IA.' };
+export const metadata = { title: 'Estado de los servicios', description: 'Estado en tiempo real del backend y del motor de IA.' , alternates: { canonical: '/estado' } };
 
 export default async function Estado() {
   const [backend, ai] = await Promise.all([
