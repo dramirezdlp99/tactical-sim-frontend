@@ -95,3 +95,7 @@
 body:has(.ta-top) .ta-theme-float,
 body:has(.ta-pub-top) .ta-theme-float { display: none; }
 :root:not([data-theme='dark']) .ta-legend i { outline: 1px solid rgba(19, 26, 38, 0.3); }
+
+/* Enlaces que usan el estilo de boton o de enlace */
+a.ta-btn, a.ta-link { text-decoration: none; }
+a.ta-link:hover { text-decoration: underline; }
