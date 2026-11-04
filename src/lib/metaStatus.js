@@ -27,7 +27,9 @@ export function describeModelSource(meta) {
 /** Extrae { model, meta } de la respuesta de /api/v1/meta/model, o null si no sirve. */
 export function readModelEnvelope(body) {
   const data = body && body.data;
-  if (!data || !data.model || !Array.isArray(data.model.models)) return null;
+  const models = data && data.model && data.model.models;
+  // El motor de IA entrega 'models' como OBJETO { basketball: {...}, tennis: {...} }.
+  if (!models || typeof models !== 'object' || Array.isArray(models) || Object.keys(models).length === 0) return null;
   return { model: data.model, meta: { source: data.source, ageSeconds: data.ageSeconds } };
 }
 
