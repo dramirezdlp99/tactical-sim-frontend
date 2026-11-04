@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { BACKEND_URL } from './apiConfig';
+import { buildEmitterProtocols, buildMirrorUrl, parseAudience } from './mirrorProtocol';
 
 /**
  * useMirrorEmitter
@@ -10,9 +11,13 @@ import { BACKEND_URL } from './apiConfig';
  * Funcionamiento:
  *  1. POST /api/v1/mirror/rooms (con JWT) crea una sala y devuelve un código
  *     de 6 caracteres (para el visor) y una clave secreta (solo del emisor).
- *  2. El emisor abre un WebSocket a /ws/mirror?room=CODIGO&key=CLAVE y envía
- *     "frames" JSON con las posiciones y el último resultado de la IA.
- *  3. El servidor reenvía cada frame, tal cual, a todos los visores.
+ *  2. El emisor abre un WebSocket seguro (WSS en producción) a
+ *     /ws/mirror?room=CODIGO&key=CLAVE y envía "frames" JSON con las posiciones
+ *     y el último resultado de la IA. Su JWT viaja en el subprotocolo del
+ *     handshake ("jwt.<token>"), no en la URL.
+ *  3. El servidor reenvía cada frame, tal cual, a todos los visores; si hay
+ *     varias instancias del backend, las une un canal Pub/Sub de Redis. Además
+ *     informa cuántos receptores hay y en qué instancia está cada uno.
  *  4. Además, cada frame se publica en un BroadcastChannel del navegador:
  *     si el proyector es otra pestaña/ventana del MISMO navegador, la imagen
  *     llega al instante y sin pasar por internet.
@@ -23,15 +28,16 @@ import { BACKEND_URL } from './apiConfig';
  *
  * Guardar en: tactical-sim-frontend/src/components/useMirrorEmitter.js
  */
-const wsBase = () => BACKEND_URL.replace(/^http/i, 'ws');
 export const mirrorChannelName = (code) => `tacticai-mirror-${code}`;
 const MIN_FRAME_INTERVAL_MS = 33; // ~30 fotogramas por segundo como máximo
-const MAX_RETRIES = 6;
+// Render tarda en reiniciar un servicio: se reintenta ~80 s antes de rendirse.
+const MAX_RETRIES = 12;
 
 export function useMirrorEmitter({ token }) {
   const [status, setStatus] = useState('idle'); // idle | connecting | live | reconnecting | error
   const [roomCode, setRoomCode] = useState(null);
   const [viewers, setViewers] = useState(0);
+  const [audience, setAudience] = useState({ instance: null, groups: [] }); // receptores por instancia
   const [error, setError] = useState('');
 
   const wsRef = useRef(null);
@@ -44,6 +50,8 @@ export function useMirrorEmitter({ token }) {
   const lastSentAtRef = useRef(0);
   const flushTimerRef = useRef(null);
   const channelRef = useRef(null);
+  const tokenRef = useRef(null);
+  const everOpenedRef = useRef(false);
 
   const clearTimers = () => {
     clearTimeout(retryTimerRef.current);
@@ -51,11 +59,19 @@ export function useMirrorEmitter({ token }) {
   };
 
   const connect = useCallback(() => {
-    const url = `${wsBase()}/ws/mirror?room=${encodeURIComponent(codeRef.current)}&key=${encodeURIComponent(keyRef.current)}`;
-    const ws = new WebSocket(url);
+    const protocols = buildEmitterProtocols(tokenRef.current);
+    if (!protocols) {
+      stoppedRef.current = true;
+      setStatus('error');
+      setError('Tu sesión no es válida para proyectar. Cierra sesión y vuelve a entrar.');
+      return;
+    }
+    const url = buildMirrorUrl(BACKEND_URL, { room: codeRef.current, key: keyRef.current });
+    const ws = new WebSocket(url, protocols);
     wsRef.current = ws;
 
     ws.onopen = () => {
+      everOpenedRef.current = true;
       retryRef.current = 0;
       setStatus('live');
       setError('');
@@ -66,9 +82,13 @@ export function useMirrorEmitter({ token }) {
       let msg;
       try { msg = JSON.parse(event.data); } catch (e) { return; }
       if (msg.type === 'ping') ws.send('{"type":"pong"}');
-      else if (msg.type === 'viewers' && typeof msg.count === 'number') setViewers(msg.count);
-      else if (msg.type === 'hello' && typeof msg.viewers === 'number') setViewers(msg.viewers);
-      else if (msg.type === 'closed') {
+      else if (msg.type === 'viewers' || msg.type === 'hello') {
+        const info = parseAudience(msg);
+        if (info) {
+          setViewers(info.total);
+          setAudience({ instance: info.instance, groups: info.groups });
+        }
+      } else if (msg.type === 'closed') {
         stoppedRef.current = true;
         setStatus('error');
         setError(msg.reason || 'La sala se cerró.');
@@ -80,7 +100,9 @@ export function useMirrorEmitter({ token }) {
       if (retryRef.current >= MAX_RETRIES) {
         stoppedRef.current = true;
         setStatus('error');
-        setError('Se perdió la conexión con la sala (venció o el servidor se reinició). Inicia la proyección de nuevo.');
+        setError(everOpenedRef.current
+          ? 'Se perdió la conexión con la sala (venció o el servidor tardó demasiado en volver). Inicia la proyección de nuevo.'
+          : 'No se pudo abrir el canal en vivo: tu sesión pudo vencer o la sala ya no existe. Cierra sesión, vuelve a entrar e inicia la proyección de nuevo.');
         return;
       }
       setStatus('reconnecting');
@@ -106,6 +128,8 @@ export function useMirrorEmitter({ token }) {
       }
       codeRef.current = json.data.roomCode;
       keyRef.current = json.data.emitterKey;
+      tokenRef.current = token || null;
+      everOpenedRef.current = false;
       setRoomCode(json.data.roomCode);
       stoppedRef.current = false;
       retryRef.current = 0;
@@ -125,11 +149,13 @@ export function useMirrorEmitter({ token }) {
     wsRef.current = null;
     channelRef.current = null;
     keyRef.current = null;
+    tokenRef.current = null;
     codeRef.current = null;
     lastFrameRef.current = null;
     setStatus('idle');
     setRoomCode(null);
     setViewers(0);
+    setAudience({ instance: null, groups: [] });
     setError('');
   }, []);
 
@@ -157,5 +183,5 @@ export function useMirrorEmitter({ token }) {
     try { channelRef.current?.close(); } catch (e) { /* nada */ }
   }, []);
 
-  return { status, roomCode, viewers, error, start, stop, send, active: status !== 'idle' && status !== 'error' };
+  return { status, roomCode, viewers, audience, error, start, stop, send, active: status !== 'idle' && status !== 'error' };
 }
