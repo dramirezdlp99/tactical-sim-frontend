@@ -16,13 +16,15 @@ describe('describeModelSource (cache-aside del modelo)', () => {
 
 describe('readModelEnvelope', () => {
   it('extrae el modelo y de donde salio', () => {
-    const body = { success: true, data: { source: 'cache-redis', ageSeconds: 7, model: { models: [{ sport: 'basketball' }] } } };
-    expect(readModelEnvelope(body)).toEqual({ model: { models: [{ sport: 'basketball' }] }, meta: { source: 'cache-redis', ageSeconds: 7 } });
+    const body = { success: true, data: { source: 'cache-redis', ageSeconds: 7, model: { models: { basketball: { available: true } } } } };
+    expect(readModelEnvelope(body)).toEqual({ model: { models: { basketball: { available: true } } }, meta: { source: 'cache-redis', ageSeconds: 7 } });
   });
   it('rechaza respuestas incompletas para que la pagina use el respaldo', () => {
     expect(readModelEnvelope(null)).toBeNull();
     expect(readModelEnvelope({ data: {} })).toBeNull();
-    expect(readModelEnvelope({ data: { model: { models: 'no-es-lista' } } })).toBeNull();
+    expect(readModelEnvelope({ data: { model: { models: 'texto' } } })).toBeNull();
+    expect(readModelEnvelope({ data: { model: { models: [] } } })).toBeNull();
+    expect(readModelEnvelope({ data: { model: { models: {} } } })).toBeNull();
   });
 });
 
