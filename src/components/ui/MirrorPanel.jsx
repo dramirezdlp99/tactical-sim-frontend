@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from './Icon';
+import { receiversLabel } from '../mirrorProtocol';
 import '../../styles/mirror.css';
 
 /**
@@ -77,6 +78,21 @@ export const MirrorPanel = ({ mirror, disabled }) => {
               <>
                 <div style={{ textAlign: 'center' }}>
                   <span className="ta-livebadge" data-s={mirror.status}><i /> {STATUS_LABEL[mirror.status]} · {mirror.viewers} {mirror.viewers === 1 ? 'visor' : 'visores'}</span>
+                </div>
+                <div className="ta-audience" aria-live="polite">
+                  <strong>{receiversLabel(mirror.viewers)} conectados</strong>
+                  {mirror.audience?.groups?.length > 0 ? (
+                    <ul>
+                      {mirror.audience.groups.map((g) => (
+                        <li key={g.id} data-mine={g.mine ? 'true' : 'false'}>
+                          <span className="ta-audience-id">{g.id}</span>
+                          <span>{g.count} {g.count === 1 ? 'receptor' : 'receptores'}{g.mine ? ' · instancia a la que estás conectado' : ''}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    mirror.audience?.instance && <p className="ta-hint">Tu conexión está en la instancia <b>{mirror.audience.instance}</b>. Aún no hay receptores.</p>
+                  )}
                 </div>
                 <div className="ta-code" aria-label={`Código de sala ${mirror.roomCode}`}>
                   {mirror.roomCode.split('').map((c, i) => <span key={i}>{c}</span>)}
