@@ -3,6 +3,7 @@ import { useMirrorViewer } from './useMirrorViewer';
 import { Brand } from './ui/Shell';
 import { Icon } from './ui/Icon';
 import { humanizeAction, toPct } from './ui/format';
+import { receiversLabel } from './mirrorProtocol';
 import { BasketballCourt } from './courts/BasketballCourt';
 import { TennisCourt } from './courts/TennisCourt';
 import '../styles/mirror.css';
@@ -27,7 +28,7 @@ const STATUS = {
 
 export const MirrorViewer = ({ roomCode }) => {
   const code = useMemo(() => String(roomCode || '').trim().toUpperCase(), [roomCode]);
-  const { status, emitterOnline, frame, message } = useMirrorViewer(code);
+  const { status, emitterOnline, frame, message, audience } = useMirrorViewer(code);
   const sport = frame?.sport || 'BASKETBALL';
   const result = frame?.result || null;
   const layers = frame?.layers || { heat: true, vectors: true, rival: true };
@@ -39,6 +40,11 @@ export const MirrorViewer = ({ roomCode }) => {
         <Brand />
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span className="ta-chip">Sala {code}</span>
+          {audience.total > 0 && (
+            <span className="ta-chip" title="Receptores conectados a esta sala y la instancia del backend que te atiende">
+              {receiversLabel(audience.total)}{audience.instance ? ` · instancia ${audience.instance}` : ''}
+            </span>
+          )}
           <span className="ta-pill" data-state={status === 'live' && emitterOnline ? 'on' : 'off'}>
             <span className="ta-dot" /> {STATUS[status]}{status === 'live' && !emitterOnline ? ' · esperando al emisor' : ''}
           </span>
