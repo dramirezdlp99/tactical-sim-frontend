@@ -1,7 +1,8 @@
 import { PublicShell, PageHead } from '../../components/public/PublicShell';
 import { ModelGrid } from '../../components/public/ModelPanels';
 import { timedFetch } from '../../lib/serverFetch';
-import { AI_ENGINE_URL } from '../../lib/serverConfig';
+import { AI_ENGINE_URL, BACKEND_SERVER_URL } from '../../lib/serverConfig';
+import { describeModelSource, readModelEnvelope } from '../../lib/metaStatus';
 import snapshot from '../../data/model-snapshot.json';
 
 /**
@@ -18,14 +19,24 @@ export const revalidate = 300;
 export const metadata = { title: 'Modelo predictivo', description: 'Métricas de validación del modelo entrenado de TacticAI.' , alternates: { canonical: '/modelo' } };
 
 async function loadModel() {
+  // 1) Backend: responde desde su cache de Redis (cache-aside, TTL 5 min) y solo pregunta a la IA si hace falta.
+  const viaBackend = await timedFetch(`${BACKEND_SERVER_URL}/api/v1/meta/model`, { timeoutMs: 8000, init: { next: { revalidate: 300 } } });
+  const envelope = viaBackend.ok ? readModelEnvelope(viaBackend.body) : null;
+  if (envelope) {
+    return { data: envelope.model, live: true, ms: viaBackend.ms, error: null, note: describeModelSource(envelope.meta) };
+  }
+  // 2) Respaldo: directo a la IA (como antes de existir la cache del backend).
   const r = await timedFetch(`${AI_ENGINE_URL}/api/v1/model/info`, { timeoutMs: 8000, init: { next: { revalidate: 300 } } });
-  if (r.ok && r.body?.models) return { data: r.body, live: true, ms: r.ms, error: null };
-  return { data: snapshot, live: false, ms: r.ms, error: r.error || `HTTP ${r.status}` };
+  if (r.ok && r.body?.models) {
+    return { data: r.body, live: true, ms: r.ms, error: null, note: null };
+  }
+  // 3) Ultimo recurso: la instantanea incluida en la compilacion.
+  return { data: snapshot, live: false, ms: r.ms, error: r.error || `HTTP ${r.status}`, note: null };
 }
 
 export default async function Modelo() {
   const generated = new Date().toISOString();
-  const { data, live, ms, error } = await loadModel();
+  const { data, live, ms, error, note } = await loadModel();
   return (
     <PublicShell>
       <PageHead
@@ -38,7 +49,7 @@ export default async function Modelo() {
       />
       <p className="ta-pub-source" data-live={live ? 'true' : 'false'}>
         {live
-          ? `Datos en vivo del motor de IA (respondió en ${ms} ms).`
+          ? `${note || 'Datos en vivo del motor de IA.'} (respuesta en ${ms} ms)`
           : `Instantánea incluida en la compilación: el motor de IA no respondió (${error}).`}
       </p>
       <ModelGrid models={data.models} />
