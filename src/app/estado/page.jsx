@@ -2,6 +2,7 @@ import { PublicShell, PageHead } from '../../components/public/PublicShell';
 import { StatusCard } from '../../components/public/StatusCard';
 import { timedFetch } from '../../lib/serverFetch';
 import { AI_ENGINE_URL, BACKEND_SERVER_URL } from '../../lib/serverConfig';
+import { summarizeStatus } from '../../lib/metaStatus';
 
 /**
  * /estado -> SSR (Server-Side Rendering).
@@ -13,10 +14,13 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Estado de los servicios', description: 'Estado en tiempo real del backend y del motor de IA.' , alternates: { canonical: '/estado' } };
 
 export default async function Estado() {
-  const [backend, ai] = await Promise.all([
+  const [backend, ai, meta] = await Promise.all([
     timedFetch(`${BACKEND_SERVER_URL}/actuator/health`),
     timedFetch(`${AI_ENGINE_URL}/health`),
+    timedFetch(`${BACKEND_SERVER_URL}/api/v1/meta/status`),
   ]);
+  const info = meta.ok ? summarizeStatus(meta.body) : null;
+  const redisResult = info ? { ...meta, ok: info.redisOk } : { ...meta, ok: false };
   const requested = new Date().toISOString();
   return (
     <PublicShell>
@@ -31,6 +35,18 @@ export default async function Estado() {
       <div className="ta-pub-panels">
         <StatusCard title="Backend (Spring Boot)" url={BACKEND_SERVER_URL} result={backend} detail={backend.ok ? `estado: ${backend.body?.status || 'desconocido'}` : null} />
         <StatusCard title="Motor de IA (FastAPI)" url={AI_ENGINE_URL} result={ai} detail={ai.ok ? `${ai.body?.service || 'servicio'} · versión ${ai.body?.version || '—'}` : null} />
+        <StatusCard
+          title="Redis (caché y Pub/Sub)"
+          url="Redis en la nube (TLS) · lo usa solo el backend"
+          result={redisResult}
+          detail={info ? `${info.redisDetail} · caché: ${info.cacheDetail}` : 'El backend no entregó su estado.'}
+        />
+        <StatusCard
+          title="Tiempo real (WebSocket)"
+          url={`${BACKEND_SERVER_URL.replace(/^http/i, 'ws')}/ws/mirror`}
+          result={meta}
+          detail={info ? `${info.mirrorDetail} · ${info.busDetail}` : null}
+        />
       </div>
     </PublicShell>
   );
