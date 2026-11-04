@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { BACKEND_URL } from './apiConfig';
 import { mirrorChannelName } from './useMirrorEmitter';
+import { buildMirrorUrl, parseAudience } from './mirrorProtocol';
 
 /**
  * useMirrorViewer
@@ -13,14 +14,14 @@ import { mirrorChannelName } from './useMirrorEmitter';
  *
  * Guardar en: tactical-sim-frontend/src/components/useMirrorViewer.js
  */
-const wsBase = () => BACKEND_URL.replace(/^http/i, 'ws');
-const MAX_RETRIES = 8;
+const MAX_RETRIES = 12;
 
 export function useMirrorViewer(roomCode) {
   const [status, setStatus] = useState('connecting'); // connecting | live | closed | error
   const [emitterOnline, setEmitterOnline] = useState(false);
   const [frame, setFrame] = useState(null);
   const [message, setMessage] = useState('');
+  const [audience, setAudience] = useState({ total: 0, instance: null, groups: [] }); // receptores y su instancia
   const lastTsRef = useRef(0);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function useMirrorViewer(roomCode) {
     }
 
     const connect = () => {
-      ws = new WebSocket(`${wsBase()}/ws/mirror?room=${encodeURIComponent(roomCode)}`);
+      ws = new WebSocket(buildMirrorUrl(BACKEND_URL, { room: roomCode }));
       ws.onopen = () => { retry = 0; setStatus('live'); setMessage(''); };
       ws.onmessage = (event) => {
         let msg;
@@ -55,6 +56,10 @@ export function useMirrorViewer(roomCode) {
         if (msg.type === 'frame') acceptFrame(event.data);
         else if (msg.type === 'ping') ws.send('{"type":"pong"}');
         else if (msg.type === 'emitter') setEmitterOnline(!!msg.online);
+        else if (msg.type === 'viewers' || msg.type === 'hello') {
+          const info = parseAudience(msg);
+          if (info) setAudience(info);
+        }
         else if (msg.type === 'closed') { stopped = true; setStatus('closed'); setMessage(msg.reason || 'La sala se cerró.'); }
       };
       ws.onclose = () => {
@@ -80,5 +85,5 @@ export function useMirrorViewer(roomCode) {
     };
   }, [roomCode]);
 
-  return { status, emitterOnline, frame, message };
+  return { status, emitterOnline, frame, message, audience };
 }
