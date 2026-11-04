@@ -29,3 +29,12 @@
 .ta-viewer-bar .big { font-family: var(--ta-font-display); font-weight: 800; font-size: 64px; line-height: 1; }
 .ta-viewer-bar .act { font-family: var(--ta-font-display); font-weight: 800; font-size: 34px; text-transform: uppercase; color: var(--ta-accent); line-height: 1; }
 .ta-viewer-bar p { margin: 4px 0 0; color: var(--ta-mute); font-size: 14px; max-width: 760px; }
+
+/* Receptores conectados y a que instancia del backend pertenece cada grupo (demostracion del backplane). */
+.ta-audience { margin: 4px 0 2px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--ta-line); background: var(--ta-bg); font-size: 13px; }
+.ta-audience strong { display: block; font-family: var(--ta-font-display); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 13px; color: var(--ta-text); }
+.ta-audience ul { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.ta-audience li { display: flex; justify-content: space-between; gap: 10px; color: var(--ta-mute); }
+.ta-audience li[data-mine='true'] { color: var(--ta-text); }
+.ta-audience-id { font-family: var(--ta-font-mono); color: var(--ta-accent); }
+.ta-audience .ta-hint { margin: 6px 0 0; }
