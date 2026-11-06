@@ -36,6 +36,42 @@
 
 ---
 
+<!-- CUENTAS-PRUEBA:INICIO -->
+## 🔑 Cuentas de prueba (para el profesor)
+
+Estas son las cuentas de demostración para probar TacticAI. La aplicación ya tiene datos: 11 usuarios (2 de ellos son estas cuentas) y **97 jugadas** guardadas en el historial, de baloncesto y tenis, con distintos autores, niveles de riesgo y acciones recomendadas.
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| 🏀 Entrenador | `tacticai.demo2026+profe.entrenador@gmail.com` | `#wRvFbCJR$5rd6Qd` |
+| 📊 Analista Táctico | `tacticai.demo2026+profe.analista@gmail.com` | `xpefn#Fd5grE2T%n` |
+
+### Cómo entrar, paso a paso
+
+1. Abre https://tactical-sim-frontend.vercel.app. ⏳ **La primera carga puede tardar 1 o 2 minutos**: el servidor y el motor de IA están en el plan gratuito de Render y se duermen sin uso. Después de despertar, todo responde rápido.
+2. Pulsa **Aplicación** e inicia sesión con el correo y la contraseña de una de las cuentas de la tabla.
+3. TacticAI **no usa app autenticadora**. Tras la contraseña, el sistema envía un **código de 6 dígitos al correo de la cuenta**. Las dos cuentas son alias de un mismo buzón de demostración (`tacticai.demo2026@gmail.com`), así que los códigos de ambas llegan a esa bandeja. El estudiante le entrega la clave del buzón al profesor por aparte (no está en este README).
+4. Escribe el código en la pantalla de verificación. ⏱️ **Dura 5 minutos** y permite 5 intentos.
+5. Si no llega: revisa la carpeta de **spam**, espera un minuto y vuelve a iniciar sesión para que se envíe un código nuevo (el anterior deja de servir). Si el servidor se reinició entre la contraseña y el código, también hay que iniciar sesión de nuevo.
+
+### Qué probar
+
+| Qué | Cómo | Qué debe verse |
+|---|---|---|
+| 📜 **Historial con datos** | Entra con la cuenta de **Analista** y pulsa **Historial** (arriba, junto a Arquitectura). El Entrenador no ve ese botón: él guarda las jugadas y el Analista las revisa | 97 jugadas de varias personas, con deporte, probabilidad, riesgo, acción y nota táctica |
+| 📥 **Exportar CSV** | Con el Analista, dentro del Historial, pulsa **Exportar CSV** | Un archivo con todas las jugadas |
+| 🏀 **Simulador** | Con la cuenta de Entrenador, elige una jugada predefinida y ejecuta la simulación | Probabilidad de éxito, riesgo y recomendación calculados por el motor de IA |
+| 💾 **Guardar una jugada** | Con el Entrenador, simula una jugada y pulsa **Guardar**. Luego abre el Historial con el Analista (ventana de incógnito) | La jugada aparece al principio de la lista, con el correo del Entrenador como autor |
+| 🔴 **Tiempo real (WebSockets + Redis)** | En una ventana, entra como Entrenador y activa la proyección de pantalla; copia el código de sala. En **otra ventana o en el celular**, abre `https://tactical-sim-frontend.vercel.app/?viewer=CODIGO` (cambia CODIGO por el de la sala) | La segunda pantalla replica en vivo lo que mueves en la primera, y el panel muestra cuántos receptores hay conectados |
+| 👥 **Dos cuentas a la vez** | Entrenador en una ventana y Analista en otra de incógnito | Dos sesiones simultáneas sobre la misma sala |
+| 🩺 **Estado del sistema** | Abre `https://tactical-sim-frontend.vercel.app/estado` | Tarjetas de backend, motor de IA, **Redis** y **WebSocket** (instancia, salas y receptores) |
+| ⚡ **Caché con Redis** | Abre `https://tactical-sim-frontend.vercel.app/modelo` | Un aviso indica que los datos vienen de la caché de Redis (o del origen la primera vez) |
+
+> ℹ️ Los datos y los correos de las demás personas son ficticios. Esta sección solo publica las 2 cuentas de demostración.
+<!-- CUENTAS-PRUEBA:FIN -->
+
+---
+
 ## 📚 El caso de estudio
 
 **TacticAI** es un simulador táctico de baloncesto y tenis. El entrenador dibuja jugadas sobre una cancha, y el sistema calcula la probabilidad de éxito de cada acción (tiro, pase, penetración, saque) y simula la respuesta defensiva del rival.
